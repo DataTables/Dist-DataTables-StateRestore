@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <version>null</version>
+        <id>datatables.net-staterestore</id>
+        <description>This is StateRestore for DataTables</description>
+        <repository type="git" url="https://github.com/DataTables/Dist-DataTables-StateRestore.git"/>
+        <authors>SpryMedia Ltd</authors>
+        <projectUrl>http://datatables.net</projectUrl>
+        <license type="expression">MIT</license>
+        <tags>StateRestore  stateSave  state reload  Datatables jQuery table</tags>
+        <dependencies>
+            <dependency id="datatables.net" version="1.11.3"/>
+        </dependencies>
+        <contentFiles>
+            <files include="**/*" buildAction="Content"/>
+        </contentFiles>
+    </metadata>
+    <files>
+        <file src="js/dataTables.stateRestore.js" target="content\Scripts"/>
+        <file src="js/dataTables.stateRestore.js" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="js/dataTables.stateRestore.min.js" target="content\Scripts"/>
+        <file src="js/dataTables.stateRestore.min.js" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="js/index.js" target="content\Scripts"/>
+        <file src="js/index.js" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="js/lightbox.js" target="content\Scripts"/>
+        <file src="js/lightbox.js" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="js/StateRestoreCollection.js" target="content\Scripts"/>
+        <file src="js/StateRestoreCollection.js" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="js/StateRestore.js" target="content\Scripts"/>
+        <file src="js/StateRestore.js" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="types/index.d.ts" target="content\Scripts"/>
+        <file src="types/index.d.ts" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="types/StateRestoreCollection.d.ts" target="content\Scripts"/>
+        <file src="types/StateRestoreCollection.d.ts" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="types/StateRestore.d.ts" target="content\Scripts"/>
+        <file src="types/StateRestore.d.ts" target="contentFiles\any\any\wwwroot\js"/>
+        <file src="types/types.d.ts" target="content\Scripts"/>
+        <file src="types/types.d.ts" target="contentFiles\any\any\wwwroot\js"/>
+    </files>
+</package>
+

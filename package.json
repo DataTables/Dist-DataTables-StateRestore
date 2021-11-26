@@ -3,16 +3,16 @@
     "description": "StateRestore for DataTables",
     "main": "js/dataTables.stateRestore.js",
     "types": "./types/types.d.ts",
-    "version": "null",
+    "version": "1.0.0",
     "files": [
         "js/**/*.js",
         "types/**/*.d.ts"
     ],
     "keywords": [
         "StateRestore",
- "stateSave",
- "state",
-"reload",
+        "stateSave",
+        "state",
+        "reload",
         "Datatables",
         "jQuery",
         "table",

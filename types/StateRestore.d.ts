@@ -3,6 +3,7 @@ import * as restoreType from './StateRestoreCollection';
 export declare function setJQuery(jq: any): void;
 export interface IClasses {
     background: string;
+    closeButton: string;
     confirmation: string;
     confirmationButton: string;
     confirmationButtons: string;
@@ -20,10 +21,13 @@ export interface IS {
     identifier: string;
     isPreDefined: boolean;
     savedState: null | IState;
+    tableId: string;
 }
 export interface IDom {
     background: JQuery<HTMLElement>;
+    closeButton: JQuery<HTMLElement>;
     confirmation: JQuery<HTMLElement>;
+    confirmationButton: JQuery<HTMLElement>;
     confirmationTitleRow: JQuery<HTMLElement>;
     dtContainer: JQuery<HTMLElement>;
     duplicateError: JQuery<HTMLElement>;
@@ -70,6 +74,7 @@ export interface IHungSearch {
 export interface IStateRestore {
     isPreDefined: boolean;
     state: string;
+    tableId?: string;
 }
 export default class StateRestore {
     private static version;
@@ -79,7 +84,7 @@ export default class StateRestore {
     dom: IDom;
     c: restoreType.IDefaults;
     s: IS;
-    constructor(settings: any, opts: restoreType.IDefaults, identifier: string, state?: IState, isPreDefined?: boolean);
+    constructor(settings: any, opts: restoreType.IDefaults, identifier: string, state?: IState, isPreDefined?: boolean, successCallback?: () => any);
     /**
      * Removes a state from storage and then triggers the dtsr-remove event
      * so that the StateRestoreCollection class can remove it's references as well.
@@ -116,7 +121,7 @@ export default class StateRestore {
      *
      * @param state Optional. If provided this is the state that will be saved rather than using the current state
      */
-    save(state?: IState, callAjax?: boolean): void;
+    save(state: IState, passedSuccessCallback: any, callAjax?: boolean): void;
     /**
      * Performs a deep compare of two state objects, returning true if they match
      *
@@ -125,6 +130,7 @@ export default class StateRestore {
      * @returns boolean indicating if the objects match
      */
     private _deepCompare;
+    private _keyupFunction;
     /**
      * Creates a new confirmation modal for the user to approve an action
      *

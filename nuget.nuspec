@@ -10,7 +10,7 @@
         <license type="expression">MIT</license>
         <tags>StateRestore  stateSave  state reload  Datatables jQuery table</tags>
         <dependencies>
-            <dependency id="datatables.net" version="1.11.3"/>
+            <dependency id="datatables.net" version="1.11.5"/>
         </dependencies>
         <contentFiles>
             <files include="**/*" buildAction="Content"/>
@@ -29,14 +29,6 @@
         <file src="js/StateRestoreCollection.js" target="contentFiles\any\any\wwwroot\js"/>
         <file src="js/StateRestore.js" target="content\Scripts"/>
         <file src="js/StateRestore.js" target="contentFiles\any\any\wwwroot\js"/>
-        <file src="types/index.d.ts" target="content\Scripts"/>
-        <file src="types/index.d.ts" target="contentFiles\any\any\wwwroot\js"/>
-        <file src="types/StateRestoreCollection.d.ts" target="content\Scripts"/>
-        <file src="types/StateRestoreCollection.d.ts" target="contentFiles\any\any\wwwroot\js"/>
-        <file src="types/StateRestore.d.ts" target="content\Scripts"/>
-        <file src="types/StateRestore.d.ts" target="contentFiles\any\any\wwwroot\js"/>
-        <file src="types/types.d.ts" target="content\Scripts"/>
-        <file src="types/types.d.ts" target="contentFiles\any\any\wwwroot\js"/>
     </files>
 </package>
 

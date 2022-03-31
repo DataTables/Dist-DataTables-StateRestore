@@ -1,5 +1,5 @@
-/*! StateRestore 1.0.0
- * 2019-2020 SpryMedia Ltd - datatables.net/license
+/*! StateRestore 1.1.0
+ * 2019-2022 SpryMedia Ltd - datatables.net/license
  */
 import StateRestore, { setJQuery as stateRestoreJQuery } from './StateRestore';
 import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } from './StateRestoreCollection';
@@ -124,17 +124,23 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
         var _this = this;
         var removeAllCallBack = function (skipModalIn) {
             var success = true;
-            _this.each(function (set) {
+            var that = _this.toArray();
+            for (var i = 0; i < that.length; i) {
+                var set = that[i];
                 if (set !== undefined) {
                     // Check if removal of states is allowed
                     if (set.c.remove) {
                         var tempSuccess = set.remove(skipModalIn);
                         if (tempSuccess !== true) {
                             success = tempSuccess;
+                            i++;
+                        }
+                        else {
+                            that.splice(i, 1);
                         }
                     }
                 }
-            });
+            }
             return success;
         };
         if (this.context[0]._stateRestore.c.remove) {
@@ -144,6 +150,19 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
             else {
                 this.context[0]._stateRestore.removeAll(removeAllCallBack);
             }
+        }
+        return this;
+    });
+    apiRegister('stateRestore.activeStates()', function () {
+        var ctx = this.context[0];
+        this.length = 0;
+        if (!ctx._stateRestore) {
+            var api = $.fn.DataTable.Api(ctx);
+            var src = new $.fn.dataTable.StateRestoreCollection(api, {});
+            _stateRegen(api, src);
+        }
+        if (ctx._stateRestore) {
+            this.push.apply(this, ctx._stateRestore.findActive());
         }
         return this;
     });
@@ -172,19 +191,25 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
         buttons: [],
         extend: 'collection',
         init: function (dt, node, config) {
+            dt.on('stateRestore-change', function () {
+                dt.button(node).text(dt.i18n('buttons.savedStates', 'Saved States', dt.stateRestore.states().length));
+            });
             if (dt.settings()[0]._stateRestore === undefined) {
                 _buttonInit(dt, config);
             }
         },
         name: 'SaveStateRestore',
         text: function (dt) {
-            return dt.i18n('buttons.savedStates', 'Saved States');
+            return dt.i18n('buttons.savedStates', 'Saved States', 0);
         }
     };
     $.fn.dataTable.ext.buttons.savedStatesCreate = {
         buttons: [],
         extend: 'collection',
         init: function (dt, node, config) {
+            dt.on('stateRestore-change', function () {
+                dt.button(node).text(dt.i18n('buttons.savedStates', 'Saved States', dt.stateRestore.states().length));
+            });
             if (dt.settings()[0]._stateRestore === undefined) {
                 if (config.config === undefined) {
                     config.config = {};
@@ -195,7 +220,7 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
         },
         name: 'SaveStateRestore',
         text: function (dt) {
-            return dt.i18n('buttons.savedStates', 'Saved States');
+            return dt.i18n('buttons.savedStates', 'Saved States', 0);
         }
     };
     $.fn.dataTable.ext.buttons.createState = {
@@ -265,28 +290,36 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
                         -1 :
                         0;
             });
-            var stateButtons = [];
+            var button = dt.button('SaveStateRestore:name');
+            var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
+                button[0].inst.c.buttons[0].buttons :
+                [];
             if (stateRestoreOpts._createInSaved) {
                 stateButtons.push('createState');
                 stateButtons.push('');
             }
             for (var _a = 0, states_3 = states; _a < states_3.length; _a++) {
                 var state = states_3[_a];
-                var split = [];
-                if (stateRestoreOpts.save) {
-                    split.push('updateState');
+                var split = Object.assign([], stateRestoreOpts.splitSecondaries);
+                if (split.includes('updateState') && !stateRestoreOpts.save) {
+                    split.splice(split.indexOf('updateState'), 1);
                 }
-                if (stateRestoreOpts.save && stateRestoreOpts.rename) {
-                    split.push('renameState');
+                if (split.includes('renameState') &&
+                    (!stateRestoreOpts.save || !stateRestoreOpts.rename)) {
+                    split.splice(split.indexOf('renameState'), 1);
                 }
-                if (stateRestoreOpts.remove) {
-                    split.push('removeState');
+                if (split.includes('removeState') && !stateRestoreOpts.remove) {
+                    split.splice(split.indexOf('removeState'), 1);
                 }
-                if (split.length > 0) {
+                if (split.length > 0 &&
+                    !split.includes('<h3>' + state.s.identifier + '</h3>')) {
                     split.unshift('<h3>' + state.s.identifier + '</h3>');
                 }
                 stateButtons.push({
                     _stateRestore: state,
+                    attr: {
+                        title: state.s.identifier
+                    },
                     config: {
                         split: split
                     },
@@ -361,7 +394,10 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
     }
     function _stateRegen(dt, src) {
         var states = dt.stateRestore.states();
-        var stateButtons = [];
+        var button = dt.button('SaveStateRestore:name');
+        var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
+            button[0].inst.c.buttons[0].buttons :
+            [];
         var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
         if (stateRestoreOpts._createInSaved) {
             stateButtons.push('createState');
@@ -374,21 +410,26 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
         else {
             for (var _i = 0, states_5 = states; _i < states_5.length; _i++) {
                 var state = states_5[_i];
-                var split = [];
-                if (stateRestoreOpts.save) {
-                    split.push('updateState');
+                var split = Object.assign([], stateRestoreOpts.splitSecondaries);
+                if (split.includes('updateState') && !stateRestoreOpts.save) {
+                    split.splice(split.indexOf('updateState'), 1);
                 }
-                if (stateRestoreOpts.save && stateRestoreOpts.rename) {
-                    split.push('renameState');
+                if (split.includes('renameState') &&
+                    (!stateRestoreOpts.save || !stateRestoreOpts.rename)) {
+                    split.splice(split.indexOf('renameState'), 1);
                 }
-                if (stateRestoreOpts.remove) {
-                    split.push('removeState');
+                if (split.includes('removeState') && !stateRestoreOpts.remove) {
+                    split.splice(split.indexOf('removeState'), 1);
                 }
-                if (split.length > 0) {
+                if (split.length > 0 &&
+                    !split.includes('<h3>' + state.s.identifier + '</h3>')) {
                     split.unshift('<h3>' + state.s.identifier + '</h3>');
                 }
                 stateButtons.push({
                     _stateRestore: state,
+                    attr: {
+                        title: state.s.identifier
+                    },
                     config: {
                         split: split
                     },

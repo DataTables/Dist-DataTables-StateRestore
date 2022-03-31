@@ -5,9 +5,10 @@ export function setJQuery(jq) {
     dataTable = jq.fn.dataTable;
 }
 var StateRestore = /** @class */ (function () {
-    function StateRestore(settings, opts, identifier, state, isPreDefined) {
+    function StateRestore(settings, opts, identifier, state, isPreDefined, successCallback) {
         if (state === void 0) { state = undefined; }
         if (isPreDefined === void 0) { isPreDefined = false; }
+        if (successCallback === void 0) { successCallback = function () { return null; }; }
         // Check that the required version of DataTables is included
         if (!dataTable || !dataTable.versionCheck || !dataTable.versionCheck('1.10.0')) {
             throw new Error('StateRestore requires DataTables 1.10 or newer');
@@ -25,11 +26,14 @@ var StateRestore = /** @class */ (function () {
             dt: table,
             identifier: identifier,
             isPreDefined: isPreDefined,
-            savedState: null
+            savedState: null,
+            tableId: state && state.stateRestore ? state.stateRestore.tableId : undefined
         };
         this.dom = {
             background: $('<div class="' + this.classes.background + '"/>'),
+            closeButton: $('<div class="' + this.classes.closeButton + '">x</div>'),
             confirmation: $('<div class="' + this.classes.confirmation + '"/>'),
+            confirmationButton: $('<button class="' + this.classes.confirmationButton + ' ' + this.classes.dtButton + '">'),
             confirmationTitleRow: $('<div class="' + this.classes.confirmationTitleRow + '"></div>'),
             dtContainer: $(this.s.dt.table().container()),
             duplicateError: $('<span class="' + this.classes.modalError + '">' +
@@ -62,7 +66,7 @@ var StateRestore = /** @class */ (function () {
                 '</h2>')
         };
         // When a StateRestore instance is created the current state of the table should also be saved.
-        this.save(state);
+        this.save(state, successCallback);
     }
     /**
      * Removes a state from storage and then triggers the dtsr-remove event
@@ -85,14 +89,25 @@ var StateRestore = /** @class */ (function () {
                 _a[this.s.identifier] = this.s.savedState,
                 _a)
         };
+        var successCallback = function () {
+            _this.dom.confirmation.trigger('dtsr-remove');
+            $(_this.s.dt.table().node()).trigger('stateRestore-change');
+            _this.dom.background.click();
+            _this.dom.confirmation.remove();
+            $(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
+            _this.dom.confirmationButton.off('click');
+        };
         // If the remove is not happening over ajax remove it from local storage and then trigger the event
         if (!this.c.ajax) {
             removeFunction = function () {
                 try {
-                    localStorage.removeItem('DataTables_stateRestore_' + _this.s.identifier + '_' + location.pathname);
-                    _this.dom.confirmation.trigger('dtsr-remove');
+                    localStorage.removeItem('DataTables_stateRestore_' + _this.s.identifier + '_' + location.pathname +
+                        (_this.s.tableId ? '_' + _this.s.tableId : ''));
+                    successCallback();
                 }
                 catch (e) {
+                    _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
+                    _this.dom.confirmation.append(_this.dom.removeError);
                     return 'remove';
                 }
                 return true;
@@ -102,9 +117,9 @@ var StateRestore = /** @class */ (function () {
         // Also only want to save if the table has been initialised and the states have been loaded in
         else if (typeof this.c.ajax === 'string' && this.s.dt.settings()[0]._bInitComplete) {
             removeFunction = function () {
-                _this.dom.confirmation.trigger('dtsr-remove');
                 $.ajax({
                     data: ajaxData,
+                    success: successCallback,
                     type: 'POST',
                     url: _this.c.ajax
                 });
@@ -113,9 +128,8 @@ var StateRestore = /** @class */ (function () {
         }
         else if (typeof this.c.ajax === 'function') {
             removeFunction = function () {
-                _this.dom.confirmation.trigger('dtsr-remove');
                 if (typeof _this.c.ajax === 'function') {
-                    _this.c.ajax.call(_this.s.dt, ajaxData);
+                    _this.c.ajax.call(_this.s.dt, ajaxData, successCallback);
                 }
                 return true;
             };
@@ -191,6 +205,10 @@ var StateRestore = /** @class */ (function () {
         if (!this.c.saveState.paging) {
             state.start = 0;
         }
+        // Page Length
+        if (!this.c.saveState.length) {
+            state.length = undefined;
+        }
         // Need to delete properties that we do not want to compare
         delete state.time;
         var copyState = this.s.savedState;
@@ -223,6 +241,19 @@ var StateRestore = /** @class */ (function () {
         $('div.dt-button-background').click();
         // Call the internal datatables function to implement the state on the table
         $.fn.dataTable.ext.oApi._fnImplementState(settings, loadedState, function () {
+            var correctPaging = function (e, preSettings) {
+                setTimeout(function () {
+                    var currpage = preSettings._iDisplayStart / preSettings._iDisplayLength;
+                    var intendedPage = loadedState.start / loadedState.length;
+                    // If the paging is incorrect then we have to set it again so that it is correct
+                    // This happens when a searchpanes filter is removed
+                    // This has to happen in a timeout because searchpanes only deselects after a timeout
+                    if (currpage >= 0 && intendedPage >= 0 && currpage !== intendedPage) {
+                        _this.s.dt.page(intendedPage).draw(false);
+                    }
+                }, 50);
+            };
+            _this.s.dt.one('preDraw', correctPaging);
             _this.s.dt.draw(false);
         });
         return loadedState;
@@ -244,9 +275,13 @@ var StateRestore = /** @class */ (function () {
             if (newIdentifier === null) {
                 var tempIdentifier = $('input.' + _this.classes.input.replace(/ /g, '.')).val();
                 if (tempIdentifier.length === 0) {
+                    _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
+                    _this.dom.confirmation.append(_this.dom.emptyError);
                     return 'empty';
                 }
                 else if (currentIdentifiers.includes(tempIdentifier)) {
+                    _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
+                    _this.dom.confirmation.append(_this.dom.duplicateError);
                     return 'duplicate';
                 }
                 else {
@@ -259,34 +294,43 @@ var StateRestore = /** @class */ (function () {
                     _a[_this.s.identifier] = newIdentifier,
                     _a)
             };
+            var successCallback = function () {
+                _this.s.identifier = newIdentifier;
+                _this.save(_this.s.savedState, function () { return null; }, false);
+                _this.dom.removeContents = $('<div class="' + _this.classes.confirmationText + '"><span>' +
+                    _this.s.dt
+                        .i18n('stateRestore.removeConfirm', _this.c.i18n.removeConfirm)
+                        .replace(/%s/g, _this.s.identifier) +
+                    '</span></div>');
+                _this.dom.confirmation.trigger('dtsr-rename');
+                _this.dom.background.click();
+                _this.dom.confirmation.remove();
+                $(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
+                _this.dom.confirmationButton.off('click');
+            };
             if (!_this.c.ajax) {
                 try {
-                    localStorage.removeItem('DataTables_stateRestore_' + _this.s.identifier + '_' + location.pathname);
+                    localStorage.removeItem('DataTables_stateRestore_' + _this.s.identifier + '_' + location.pathname +
+                        (_this.s.tableId ? '_' + _this.s.tableId : ''));
+                    successCallback();
                 }
                 catch (e) {
+                    _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
+                    _this.dom.confirmation.append(_this.dom.removeError);
                     return false;
                 }
             }
             else if (typeof _this.c.ajax === 'string' && _this.s.dt.settings()[0]._bInitComplete) {
-                _this.dom.confirmation.trigger('dtsr-rename');
                 $.ajax({
                     data: ajaxData,
+                    success: successCallback,
                     type: 'POST',
                     url: _this.c.ajax
                 });
             }
             else if (typeof _this.c.ajax === 'function') {
-                _this.dom.confirmation.trigger('dtsr-rename');
-                _this.c.ajax.call(_this.s.dt, ajaxData);
+                _this.c.ajax.call(_this.s.dt, ajaxData, successCallback);
             }
-            _this.s.identifier = newIdentifier;
-            _this.dom.removeContents = $('<div class="' + _this.classes.confirmationText + '"><span>' +
-                _this.s.dt
-                    .i18n('stateRestore.removeConfirm', _this.c.i18n.removeConfirm)
-                    .replace(/%s/g, _this.s.identifier) +
-                '</span></div>');
-            _this.save(_this.s.savedState, false);
-            _this.dom.confirmation.trigger('dtsr-rename');
             return true;
         };
         // Check if a new identifier has been provided, if so no need for a modal
@@ -315,11 +359,15 @@ var StateRestore = /** @class */ (function () {
      *
      * @param state Optional. If provided this is the state that will be saved rather than using the current state
      */
-    StateRestore.prototype.save = function (state, callAjax) {
+    StateRestore.prototype.save = function (state, passedSuccessCallback, callAjax) {
         var _a;
+        var _this = this;
         if (callAjax === void 0) { callAjax = true; }
         // Check if saving states is allowed
         if (!this.c.save) {
+            if (passedSuccessCallback) {
+                passedSuccessCallback.call(this);
+            }
             return;
         }
         // this.s.dt.state.save();
@@ -329,13 +377,24 @@ var StateRestore = /** @class */ (function () {
         if (state === undefined) {
             savedState = this.s.dt.state();
         }
+        else if (typeof state !== 'object') {
+            return;
+        }
         else {
             savedState = state;
         }
-        savedState.stateRestore = {
-            isPreDefined: this.s.isPreDefined,
-            state: this.s.identifier
-        };
+        if (savedState.stateRestore) {
+            savedState.stateRestore.isPreDefined = this.s.isPreDefined;
+            savedState.stateRestore.state = this.s.identifier;
+            savedState.stateRestore.tableId = this.s.tableId;
+        }
+        else {
+            savedState.stateRestore = {
+                isPreDefined: this.s.isPreDefined,
+                state: this.s.identifier,
+                tableId: this.s.tableId
+            };
+        }
         this.s.savedState = savedState;
         // Order
         if (!this.c.saveState.order) {
@@ -388,35 +447,68 @@ var StateRestore = /** @class */ (function () {
         if (!this.c.saveState.paging) {
             this.s.savedState.start = 0;
         }
+        // Page Length
+        if (!this.c.saveState.length) {
+            this.s.savedState.length = undefined;
+        }
         this.s.savedState.c = this.c;
+        // Need to remove the parent reference before we save the state
+        // Its not needed to rebuild, but it does cause a circular reference when converting to JSON
+        if (this.s.savedState.c.splitSecondaries.length) {
+            for (var _i = 0, _b = this.s.savedState.c.splitSecondaries; _i < _b.length; _i++) {
+                var secondary = _b[_i];
+                if (secondary.parent) {
+                    secondary.parent = undefined;
+                }
+            }
+        }
+        // If the state is predefined there is no need to save it over ajax or to local storage
+        if (this.s.isPreDefined) {
+            if (passedSuccessCallback) {
+                passedSuccessCallback.call(this);
+            }
+            return;
+        }
         var ajaxData = {
             action: 'save',
             stateRestore: (_a = {},
                 _a[this.s.identifier] = this.s.savedState,
                 _a)
         };
+        var successCallback = function () {
+            if (passedSuccessCallback) {
+                passedSuccessCallback.call(_this);
+            }
+            _this.dom.confirmation.trigger('dtsr-save');
+            $(_this.s.dt.table().node()).trigger('stateRestore-change');
+        };
         if (!this.c.ajax) {
-            try {
-                localStorage.setItem('DataTables_stateRestore_' + this.s.identifier + '_' + location.pathname, JSON.stringify(this.s.savedState));
-                this.dom.confirmation.trigger('dtsr-save');
+            localStorage.setItem('DataTables_stateRestore_' + this.s.identifier + '_' + location.pathname +
+                (this.s.tableId ? '_' + this.s.tableId : ''), JSON.stringify(this.s.savedState));
+            successCallback();
+        }
+        else if (typeof this.c.ajax === 'string' && callAjax) {
+            if (this.s.dt.settings()[0]._bInitComplete) {
+                $.ajax({
+                    data: ajaxData,
+                    success: successCallback,
+                    type: 'POST',
+                    url: this.c.ajax
+                });
             }
-            catch (e) {
-                return;
+            else {
+                this.s.dt.one('init', function () {
+                    $.ajax({
+                        data: ajaxData,
+                        success: successCallback,
+                        type: 'POST',
+                        url: _this.c.ajax
+                    });
+                });
             }
         }
-        else if (typeof this.c.ajax === 'string' && this.s.dt.settings()[0]._bInitComplete) {
-            this.dom.confirmation.trigger('dtsr-save');
-            $.ajax({
-                data: ajaxData,
-                type: 'POST',
-                url: this.c.ajax
-            });
-        }
-        else if (typeof this.c.ajax === 'function') {
-            this.dom.confirmation.trigger('dtsr-save');
-            if (callAjax) {
-                this.c.ajax.call(this.s.dt, ajaxData);
-            }
+        else if (typeof this.c.ajax === 'function' && callAjax) {
+            this.c.ajax.call(this.s.dt, ajaxData, successCallback);
         }
     };
     /**
@@ -430,9 +522,29 @@ var StateRestore = /** @class */ (function () {
         // Put keys and states into arrays as this makes the later code easier to work
         var states = [state1, state2];
         var keys = [Object.keys(state1).sort(), Object.keys(state2).sort()];
+        // If scroller is included then we need to remove the start value
+        //  as it can be different but yield the same results
+        if (keys[0].includes('scroller')) {
+            var startIdx = keys[0].indexOf('start');
+            if (startIdx) {
+                keys[0].splice(startIdx, 1);
+            }
+        }
+        if (keys[1].includes('scroller')) {
+            var startIdx = keys[1].indexOf('start');
+            if (startIdx) {
+                keys[1].splice(startIdx, 1);
+            }
+        }
         // We want to remove any private properties within the states
         for (var i = 0; i < keys[0].length; i++) {
             if (keys[0][i].indexOf('_') === 0) {
+                keys[0].splice(i, 1);
+                i--;
+            }
+            // If scroller is included then we need to remove the following values
+            //  as they can be different but yield the same results
+            if (keys[0][i] === 'baseRowTop' || keys[0][i] === 'baseScrollTop' || keys[0][i] === 'scrollTop') {
                 keys[0].splice(i, 1);
                 i--;
             }
@@ -442,24 +554,26 @@ var StateRestore = /** @class */ (function () {
                 keys[1].splice(i, 1);
                 i--;
             }
-        }
-        // If the keys are not the same length
-        if (keys[0].length !== keys[1].length) {
-            // We first need to check that there are no undefined values lurking
-            // If there are then they are most likely present in the longer of the two arrays
-            var longer = keys[0].length > keys[1].length ? 0 : 1;
-            // Then go through this array and find the key that does not match
-            // And the value of the longer set is undefined
-            for (var i = 0; i < keys[longer].length; i++) {
-                if (keys[0][i] !== keys[1][i] && states[longer][keys[longer][i]] === undefined) {
-                    // remove that key
-                    keys[longer].splice(i, 1);
-                    i--;
-                }
+            if (keys[1][i] === 'baseRowTop' || keys[1][i] === 'baseScrollTop' || keys[1][i] === 'scrollTop') {
+                keys[1].splice(i, 1);
+                i--;
             }
-            // If the length of the keys still do not match at this point then they are different
-            if (keys[0].length !== keys[1].length) {
-                return false;
+        }
+        if (keys[0].length === 0 && keys[1].length > 0 ||
+            keys[1].length === 0 && keys[0].length > 0) {
+            return false;
+        }
+        // We are only going to compare the keys that are common between both states
+        for (var i = 0; i < keys[0].length; i++) {
+            if (!keys[1].includes(keys[0][i])) {
+                keys[0].splice(i, 1);
+                i--;
+            }
+        }
+        for (var i = 0; i < keys[1].length; i++) {
+            if (!keys[0].includes(keys[1][i])) {
+                keys[1].splice(i, 1);
+                i--;
             }
         }
         // Then each key and value has to be checked against each other
@@ -474,6 +588,11 @@ var StateRestore = /** @class */ (function () {
                     return false;
                 }
             }
+            else if (typeof states[0][keys[0][i]] === 'number' && typeof states[1][keys[1][i]] === 'number') {
+                if (Math.round(states[0][keys[0][i]]) !== Math.round(states[1][keys[1][i]])) {
+                    return false;
+                }
+            }
             // Otherwise we can just check the value
             else if (states[0][keys[0][i]] !== states[1][keys[1][i]]) {
                 return false;
@@ -481,6 +600,16 @@ var StateRestore = /** @class */ (function () {
         }
         // If we get all the way to here there are no differences so return true for this object
         return true;
+    };
+    StateRestore.prototype._keyupFunction = function (e) {
+        // If enter same action as pressing the button
+        if (e.key === 'Enter') {
+            this.dom.confirmationButton.click();
+        }
+        // If escape close modal
+        else if (e.key === 'Escape') {
+            $('div.' + this.classes.background.replace(/ /g, '.')).click();
+        }
     };
     /**
      * Creates a new confirmation modal for the user to approve an action
@@ -494,15 +623,13 @@ var StateRestore = /** @class */ (function () {
         var _this = this;
         this.dom.background.appendTo(this.dom.dtContainer);
         this.dom.confirmationTitleRow.empty().append(title);
-        var confirmationButton = $('<button class="' + this.classes.confirmationButton + ' ' + this.classes.dtButton + '">' +
-            buttonText +
-            '</button>');
+        this.dom.confirmationButton.html(buttonText);
         this.dom.confirmation
             .empty()
             .append(this.dom.confirmationTitleRow)
             .append(modalContents)
             .append($('<div class="' + this.classes.confirmationButtons + '"></div>')
-            .append(confirmationButton))
+            .append(this.dom.confirmationButton))
             .appendTo(this.dom.dtContainer);
         $(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
         var inputs = modalContents.children('input');
@@ -512,34 +639,16 @@ var StateRestore = /** @class */ (function () {
         }
         // Otherwise focus on the confirmation button
         else {
-            confirmationButton.focus();
+            this.dom.confirmationButton.focus();
         }
         var background = $('div.' + this.classes.background.replace(/ /g, '.'));
-        var keyupFunction = function (e) {
-            // If enter same action as pressing the button
-            if (e.key === 'Enter') {
-                confirmationButton.click();
-            }
-            // If escape close modal
-            else if (e.key === 'Escape') {
-                background.click();
-            }
-        };
+        if (this.c.modalCloseButton) {
+            this.dom.confirmation.append(this.dom.closeButton);
+            this.dom.closeButton.on('click', function () { return background.click(); });
+        }
         // When the button is clicked, call the appropriate action,
         // remove the background and modal from the screen and unbind the keyup event.
-        confirmationButton.on('click', function () {
-            var success = buttonAction();
-            if (success === true) {
-                _this.dom.background.remove();
-                _this.dom.confirmation.remove();
-                $(document).unbind('keyup', keyupFunction);
-                confirmationButton.off('click');
-            }
-            else {
-                _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
-                _this.dom.confirmation.append(_this.dom[success + 'Error']);
-            }
-        });
+        this.dom.confirmationButton.on('click', function () { return buttonAction(); });
         this.dom.confirmation.on('click', function (e) {
             e.stopPropagation();
         });
@@ -547,9 +656,9 @@ var StateRestore = /** @class */ (function () {
         background.one('click', function () {
             _this.dom.background.remove();
             _this.dom.confirmation.remove();
-            $(document).unbind('keyup', keyupFunction);
+            $(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
         });
-        $(document).on('keyup', keyupFunction);
+        $(document).on('keyup', function (e) { return _this._keyupFunction(e); });
     };
     /**
      * Convert from camelCase notation to the internal Hungarian.
@@ -567,9 +676,10 @@ var StateRestore = /** @class */ (function () {
             sSearch: obj.search
         };
     };
-    StateRestore.version = '1.0.0';
+    StateRestore.version = '1.1.0';
     StateRestore.classes = {
         background: 'dtsr-background',
+        closeButton: 'dtsr-popover-close',
         confirmation: 'dtsr-confirmation',
         confirmationButton: 'dtsr-confirmation-button',
         confirmationButtons: 'dtsr-confirmation-buttons',
@@ -595,6 +705,7 @@ var StateRestore = /** @class */ (function () {
                     search: 'Column Search:',
                     visible: 'Column Visibility:'
                 },
+                length: 'Page Length:',
                 name: 'Name:',
                 order: 'Sorting:',
                 paging: 'Paging:',
@@ -618,6 +729,7 @@ var StateRestore = /** @class */ (function () {
             renameLabel: 'New Name for %s:',
             renameTitle: 'Rename State'
         },
+        modalCloseButton: true,
         remove: true,
         rename: true,
         save: true,
@@ -627,6 +739,7 @@ var StateRestore = /** @class */ (function () {
                 search: true,
                 visible: true
             },
+            length: true,
             order: true,
             paging: true,
             scroller: true,
@@ -635,12 +748,18 @@ var StateRestore = /** @class */ (function () {
             searchPanes: true,
             select: true
         },
+        splitSecondaries: [
+            'updateState',
+            'renameState',
+            'removeState'
+        ],
         toggle: {
             colReorder: false,
             columns: {
                 search: false,
                 visible: false
             },
+            length: false,
             order: false,
             paging: false,
             scroller: false,

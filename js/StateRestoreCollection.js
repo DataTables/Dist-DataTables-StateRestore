@@ -41,6 +41,7 @@ var StateRestoreCollection = /** @class */ (function () {
         });
         this.dom = {
             background: $('<div class="' + this.classes.background + '"/>'),
+            closeButton: $('<div class="' + this.classes.closeButton + '">x</div>'),
             colReorderToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.colReorderToggle + ' ' +
@@ -89,6 +90,15 @@ var StateRestoreCollection = /** @class */ (function () {
             emptyError: $('<span class="' + this.classes.modalError + '">' +
                 this.s.dt.i18n('stateRestore.emptyError', this.c.i18n.emptyError) +
                 '</span>'),
+            lengthToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+                '<input type="checkbox" class="' +
+                this.classes.lengthToggle + ' ' +
+                this.classes.checkBox +
+                '" checked>' +
+                '<label class="' + this.classes.checkLabel + '">' +
+                this.s.dt.i18n('stateRestore.creationModal.length', this.c.i18n.creationModal.length) +
+                '</label>' +
+                '</div>'),
             nameInputRow: $('<div class="' + this.classes.formRow + '">' +
                 '<label class="' + this.classes.nameLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.name', this.c.i18n.creationModal.name) +
@@ -208,7 +218,7 @@ var StateRestoreCollection = /** @class */ (function () {
         this.s.dt.on('destroy.dtsr', function () {
             _this.destroy();
         });
-        this.s.dt.on('draw.dtsr buttons-action.dtsr', function () { return _this._findActive(); });
+        this.s.dt.on('draw.dtsr buttons-action.dtsr', function () { return _this.findActive(); });
         return this;
     }
     /**
@@ -233,14 +243,34 @@ var StateRestoreCollection = /** @class */ (function () {
                 return 'duplicate';
             }
             _this.s.dt.state.save();
-            var newState = new StateRestore(_this.s.dt.settings()[0], $.extend(true, {}, _this.c, toggles, options), id, _this.s.dt.state());
+            var that = _this;
+            var successCallback = function () {
+                that.s.states.push(this);
+                that._collectionRebuild();
+            };
+            var currState = _this.s.dt.state();
+            currState.stateRestore = {
+                isPredefined: false,
+                state: id,
+                tableId: _this.s.dt.table().node().id
+            };
+            if (toggles.saveState) {
+                var opts = _this.c.saveState;
+                // We don't want to extend, but instead AND all properties of the saveState option
+                for (var _i = 0, _a = Object.keys(toggles.saveState); _i < _a.length; _i++) {
+                    var key = _a[_i];
+                    if (!toggles.saveState[key]) {
+                        opts[key] = false;
+                    }
+                }
+                _this.c.saveState = opts;
+            }
+            var newState = new StateRestore(_this.s.dt.settings()[0], $.extend(true, {}, _this.c, options), id, currState, false, successCallback);
             $(_this.s.dt.table().node()).on('dtsr-modal-inserted', function () {
                 newState.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState.s.identifier); });
                 newState.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
                 newState.dom.confirmation.one('dtsr-save', function () { return _this._collectionRebuild(); });
             });
-            _this.s.states.push(newState);
-            _this._collectionRebuild();
             return true;
         };
         // If there isn't already a state with this identifier
@@ -279,7 +309,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 this.s.dt.i18n('stateRestore.removeJoiner', this.c.i18n.removeJoiner) +
                 ids.slice(-1);
         }
-        $(this.dom.removeContents.children('span')).text(this.s.dt
+        $(this.dom.removeContents.children('span')).html(this.s.dt
             .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
             .replace(/%s/g, replacementString));
         this._newModal(this.dom.removeTitle, this.s.dt.i18n('stateRestore.removeSubmit', this.c.i18n.removeSubmit), removeFunction, this.dom.removeContents);
@@ -299,6 +329,46 @@ var StateRestoreCollection = /** @class */ (function () {
         this.s.states = [];
         this.s.dt.off('.dtsr');
         $(this.s.dt.table().node()).off('.dtsr');
+    };
+    /**
+     * Identifies active states and updates their button to reflect this.
+     *
+     * @returns An array containing objects with the details of currently active states
+     */
+    StateRestoreCollection.prototype.findActive = function () {
+        // Make sure that the state is up to date
+        this.s.dt.state.save();
+        var currState = this.s.dt.state();
+        // Make all of the buttons inactive so that only any that match will be marked as active
+        var buttons = $('button.' + $.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
+        // Some of the styling libraries use a tags instead of buttons
+        if (buttons.length === 0) {
+            buttons = $('a.' + $.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
+        }
+        for (var _i = 0, buttons_1 = buttons; _i < buttons_1.length; _i++) {
+            var button = buttons_1[_i];
+            this.s.dt.button($(button).parent()[0]).active(false);
+        }
+        var results = [];
+        // Go through all of the states comparing if their state is the same to the current one
+        for (var _a = 0, _b = this.s.states; _a < _b.length; _a++) {
+            var state = _b[_a];
+            if (state.compare(currState)) {
+                results.push({
+                    data: state.s.savedState,
+                    name: state.s.identifier
+                });
+                // If so, find the corresponding button and mark it as active
+                for (var _c = 0, buttons_2 = buttons; _c < buttons_2.length; _c++) {
+                    var button = buttons_2[_c];
+                    if ($(button).text() === state.s.identifier) {
+                        this.s.dt.button($(button).parent()[0]).active(true);
+                        break;
+                    }
+                }
+            }
+        }
+        return results;
     };
     /**
      * Gets a single state that has the identifier matching that which is passed in
@@ -351,27 +421,26 @@ var StateRestoreCollection = /** @class */ (function () {
      */
     StateRestoreCollection.prototype._addPreDefined = function (preDefined) {
         var _this = this;
-        var states = Object.keys(preDefined).sort(function (a, b) {
-            var aId = +_this._getId(a);
-            var bId = +_this._getId(b);
-            return aId > bId ?
-                1 :
-                aId < bId ?
-                    -1 :
-                    0;
-        });
+        // There is a potential issue here if sorting where the string parts of the name are the same,
+        // only the number differs and there are many states - but this wouldn't be usfeul naming so
+        // more of a priority to sort alphabetically
+        var states = Object.keys(preDefined).sort(function (a, b) { return a > b ? 1 : a < b ? -1 : 0; });
         var _loop_1 = function (state) {
             for (var i = 0; i < this_1.s.states.length; i++) {
                 if (this_1.s.states[i].s.identifier === state) {
                     this_1.s.states.splice(i, 1);
                 }
             }
+            var that = this_1;
+            var successCallback = function () {
+                that.s.states.push(this);
+                that._collectionRebuild();
+            };
             var loadedState = preDefined[state];
             var newState = new StateRestore(this_1.s.dt, $.extend(true, {}, this_1.c, loadedState.c !== undefined ?
                 { saveState: loadedState.c.saveState } :
-                undefined, true), state, loadedState, true);
+                undefined, true), state, loadedState, true, successCallback);
             newState.s.savedState = loadedState;
-            this_1.s.states.push(newState);
             $(this_1.s.dt.table().node()).on('dtsr-modal-inserted', function () {
                 newState.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState.s.identifier); });
                 newState.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
@@ -383,14 +452,15 @@ var StateRestoreCollection = /** @class */ (function () {
             var state = states_1[_i];
             _loop_1(state);
         }
-        this._collectionRebuild();
     };
     /**
      * Rebuilds all of the buttons in the collection of states to make sure that states and text is up to date
      */
     StateRestoreCollection.prototype._collectionRebuild = function () {
-        var _this = this;
-        var stateButtons = [];
+        var button = this.s.dt.button('SaveStateRestore:name');
+        var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
+            button[0].inst.c.buttons[0].buttons :
+            [];
         if (this.c._createInSaved) {
             stateButtons.push('createState');
         }
@@ -401,10 +471,12 @@ var StateRestoreCollection = /** @class */ (function () {
                 '</span>');
         }
         else {
-            // Sort the states so that they appear alphabetically
+            // There is a potential issue here if sorting where the string parts of the name are the same,
+            // only the number differs and there are many states - but this wouldn't be usfeul naming so
+            // more of a priority to sort alphabetically
             this.s.states = this.s.states.sort(function (a, b) {
-                var aId = +_this._getId(a.s.identifier);
-                var bId = +_this._getId(b.s.identifier);
+                var aId = a.s.identifier;
+                var bId = b.s.identifier;
                 return aId > bId ?
                     1 :
                     aId < bId ?
@@ -414,21 +486,26 @@ var StateRestoreCollection = /** @class */ (function () {
             // Construct the split property of each button
             for (var _i = 0, _a = this.s.states; _i < _a.length; _i++) {
                 var state = _a[_i];
-                var split = [];
-                if (this.c.save && state.c.save) {
-                    split.push('updateState');
+                var split = Object.assign([], this.c.splitSecondaries);
+                if (split.includes('updateState') && (!this.c.save || !state.c.save)) {
+                    split.splice(split.indexOf('updateState'), 1);
                 }
-                if (this.c.save && state.c.save && this.c.rename && state.c.rename) {
-                    split.push('renameState');
+                if (split.includes('renameState') &&
+                    (!this.c.save || !state.c.save || !this.c.rename || !state.c.rename)) {
+                    split.splice(split.indexOf('renameState'), 1);
                 }
-                if (this.c.remove && state.c.remove) {
-                    split.push('removeState');
+                if (split.includes('removeState') && (!this.c.remove || !state.c.remove)) {
+                    split.splice(split.indexOf('removeState'), 1);
                 }
-                if (split.length > 0) {
+                if (split.length > 0 &&
+                    !split.includes('<h3>' + state.s.identifier + '</h3>')) {
                     split.unshift('<h3>' + state.s.identifier + '</h3>');
                 }
                 stateButtons.push({
                     _stateRestore: state,
+                    attr: {
+                        title: state.s.identifier
+                    },
                     config: {
                         split: split
                     },
@@ -437,7 +514,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 });
             }
         }
-        this.s.dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
+        button.collectionRebuild(stateButtons);
     };
     /**
      * Displays a modal that is used to get information from the user to create a new state.
@@ -474,6 +551,13 @@ var StateRestoreCollection = /** @class */ (function () {
             this.c.saveState.paging &&
             (tableConfig.paging === undefined || tableConfig.paging)) {
             togglesToInsert.push(this.dom.pagingToggle);
+        }
+        // Page Length toggle - check toggle and saving enabled
+        if (((!toggleDefined || options.toggle.length === undefined) && this.c.toggle.length ||
+            toggleDefined && options.toggle.length) &&
+            this.c.saveState.length &&
+            (tableConfig.length === undefined || tableConfig.length)) {
+            togglesToInsert.push(this.dom.lengthToggle);
         }
         // ColReorder toggle - check toggle and saving enabled
         if (this.s.hasColReorder &&
@@ -617,6 +701,10 @@ var StateRestoreCollection = /** @class */ (function () {
                 background.click();
             }
         };
+        if (this.c.modalCloseButton) {
+            this.dom.creation.append(this.dom.closeButton);
+            this.dom.closeButton.on('click', function () { return background.click(); });
+        }
         creationButton.on('click', function () {
             // Get the values of the checkBoxes
             var saveState = {
@@ -625,6 +713,7 @@ var StateRestoreCollection = /** @class */ (function () {
                     search: _this.dom.columnsSearchToggle.children('input').is(':checked'),
                     visible: _this.dom.columnsVisibleToggle.children('input').is(':checked')
                 },
+                length: _this.dom.lengthToggle.children('input').is(':checked'),
                 order: _this.dom.orderToggle.children('input').is(':checked'),
                 paging: _this.dom.pagingToggle.children('input').is(':checked'),
                 scroller: _this.dom.scrollerToggle.children('input').is(':checked'),
@@ -661,35 +750,6 @@ var StateRestoreCollection = /** @class */ (function () {
         // Need to save the state before the focus is lost when the modal is interacted with
         this.s.dt.state.save();
     };
-    StateRestoreCollection.prototype._findActive = function () {
-        // Make sure that the state is up to date
-        this.s.dt.state.save();
-        var currState = this.s.dt.state();
-        // Make all of the buttons inactive so that only any that match will be marked as active
-        var buttons = $('button.' + $.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
-        // Some of the styling libraries use a tags instead of buttons
-        if (buttons.length === 0) {
-            buttons = $('a.' + $.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
-        }
-        for (var _i = 0, buttons_1 = buttons; _i < buttons_1.length; _i++) {
-            var button = buttons_1[_i];
-            this.s.dt.button($(button).parent()[0]).active(false);
-        }
-        // Go through all of the states comparing if their state is the same to the current one
-        for (var _a = 0, _b = this.s.states; _a < _b.length; _a++) {
-            var state = _b[_a];
-            if (state.compare(currState)) {
-                // If so, find the corresponding button and mark it as active
-                for (var _c = 0, buttons_2 = buttons; _c < buttons_2.length; _c++) {
-                    var button = buttons_2[_c];
-                    if ($(button).text() === state.s.identifier) {
-                        this.s.dt.button($(button).parent()[0]).active(true);
-                        break;
-                    }
-                }
-            }
-        }
-    };
     /**
      * This callback is called when a state is removed.
      * This removes the state from storage and also strips it's button from the container
@@ -705,45 +765,6 @@ var StateRestoreCollection = /** @class */ (function () {
         }
         this._collectionRebuild();
         return true;
-    };
-    StateRestoreCollection.prototype._getId = function (identifier) {
-        var replaceRegex;
-        var language = this.s.dt.settings()[0].oLanguage;
-        // Create a replacement regex based on the i18n values
-        var defaultString = language.buttons !== undefined && language.buttons.stateRestore !== undefined ?
-            language.buttons.stateRestore :
-            'State ';
-        if (defaultString.indexOf('%d') === defaultString.length - 3) {
-            replaceRegex = new RegExp(defaultString.replace(/%d/g, ''));
-        }
-        else {
-            var splitString = defaultString.split('%d');
-            replaceRegex = [];
-            for (var _i = 0, splitString_1 = splitString; _i < splitString_1.length; _i++) {
-                var split = splitString_1[_i];
-                replaceRegex.push(new RegExp(split));
-            }
-        }
-        var id;
-        if (Array.isArray(replaceRegex)) {
-            id = identifier;
-            for (var _a = 0, replaceRegex_1 = replaceRegex; _a < replaceRegex_1.length; _a++) {
-                var reg = replaceRegex_1[_a];
-                id = id.replace(reg, '');
-            }
-        }
-        else {
-            id = identifier.replace(replaceRegex, '');
-        }
-        // If the id after replacement is not a number, or the length is the same as before,
-        //  it has been customised so return 0
-        if (isNaN(+id) || id.length === identifier) {
-            return 0;
-        }
-        // Otherwise return the number that has been assigned previously
-        else {
-            return +id;
-        }
     };
     /**
      * Creates a new confirmation modal for the user to approve an action
@@ -822,14 +843,22 @@ var StateRestoreCollection = /** @class */ (function () {
         var keys = Object.keys(localStorage);
         var _loop_3 = function (key) {
             // eslint-disable-next-line no-useless-escape
-            if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '\/') + '$'))) {
-                var loadedState = JSON.parse(localStorage.getItem(key));
-                if (loadedState.stateRestore.isPreDefined) {
+            if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') + '$')) ||
+                key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') +
+                    '_' + this_2.s.dt.table().node().id + '$'))) {
+                var loadedState_1 = JSON.parse(localStorage.getItem(key));
+                if (loadedState_1.stateRestore.isPreDefined ||
+                    (loadedState_1.stateRestore.tableId &&
+                        loadedState_1.stateRestore.tableId !== this_2.s.dt.table().node().id)) {
                     return "continue";
                 }
-                var newState_1 = new StateRestore(this_2.s.dt, $.extend(true, {}, this_2.c, { saveState: loadedState.c.saveState }), loadedState.stateRestore.state, loadedState);
-                newState_1.s.savedState = loadedState;
-                this_2.s.states.push(newState_1);
+                var that_1 = this_2;
+                var successCallback = function () {
+                    this.s.savedState = loadedState_1;
+                    that_1.s.states.push(this);
+                    that_1._collectionRebuild();
+                };
+                var newState_1 = new StateRestore(this_2.s.dt, $.extend(true, {}, this_2.c, { saveState: loadedState_1.c.saveState }), loadedState_1.stateRestore.state, loadedState_1, false, successCallback);
                 $(this_2.s.dt.table().node()).on('dtsr-modal-inserted', function () {
                     newState_1.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState_1.s.identifier); });
                     newState_1.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
@@ -842,7 +871,6 @@ var StateRestoreCollection = /** @class */ (function () {
             var key = keys_1[_i];
             _loop_3(key);
         }
-        this._collectionRebuild();
     };
     StateRestoreCollection.version = '1.0.0';
     StateRestoreCollection.classes = {
@@ -850,6 +878,7 @@ var StateRestoreCollection = /** @class */ (function () {
         checkBox: 'dtsr-check-box',
         checkLabel: 'dtsr-check-label',
         checkRow: 'dtsr-check-row',
+        closeButton: 'dtsr-popover-close',
         colReorderToggle: 'dtsr-colReorder-toggle',
         columnsSearchToggle: 'dtsr-columns-search-toggle',
         columnsVisibleToggle: 'dtsr-columns-visible-toggle',
@@ -869,6 +898,7 @@ var StateRestoreCollection = /** @class */ (function () {
         emptyStates: 'dtsr-emptyStates',
         formRow: 'dtsr-form-row',
         leftSide: 'dtsr-left',
+        lengthToggle: 'dtsr-length-toggle',
         modalError: 'dtsr-modal-error',
         modalFoot: 'dtsr-modal-foot',
         nameInput: 'dtsr-name-input',
@@ -896,6 +926,7 @@ var StateRestoreCollection = /** @class */ (function () {
                     search: 'Column Search',
                     visible: 'Column Visibility'
                 },
+                length: 'Page Length',
                 name: 'Name:',
                 order: 'Sorting',
                 paging: 'Paging',
@@ -919,6 +950,7 @@ var StateRestoreCollection = /** @class */ (function () {
             renameLabel: 'New Name for %s:',
             renameTitle: 'Rename State'
         },
+        modalCloseButton: true,
         preDefined: {},
         remove: true,
         rename: true,
@@ -929,6 +961,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 search: true,
                 visible: true
             },
+            length: true,
             order: true,
             paging: true,
             scroller: true,
@@ -937,12 +970,18 @@ var StateRestoreCollection = /** @class */ (function () {
             searchPanes: true,
             select: true
         },
+        splitSecondaries: [
+            'updateState',
+            'renameState',
+            'removeState'
+        ],
         toggle: {
             colReorder: false,
             columns: {
                 search: false,
                 visible: false
             },
+            length: false,
             order: false,
             paging: false,
             scroller: false,

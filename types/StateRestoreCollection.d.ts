@@ -6,6 +6,7 @@ export interface IClasses {
     checkBox: string;
     checkLabel: string;
     checkRow: string;
+    closeButton: string;
     colReorderToggle: string;
     columnsSearchToggle: string;
     columnsVisibleToggle: string;
@@ -25,6 +26,7 @@ export interface IClasses {
     emptyStates: string;
     formRow: string;
     leftSide: string;
+    lengthToggle: string;
     modalError: string;
     modalFoot: string;
     nameInput: string;
@@ -41,6 +43,7 @@ export interface IClasses {
 }
 export interface IDom {
     background: JQuery<HTMLElement>;
+    closeButton: JQuery<HTMLElement>;
     colReorderToggle: JQuery<HTMLElement>;
     columnsSearchToggle: JQuery<HTMLElement>;
     columnsVisibleToggle: JQuery<HTMLElement>;
@@ -53,6 +56,7 @@ export interface IDom {
     dtContainer: JQuery<HTMLElement>;
     duplicateError: JQuery<HTMLElement>;
     emptyError: JQuery<HTMLElement>;
+    lengthToggle: JQuery<HTMLElement>;
     nameInputRow: JQuery<HTMLElement>;
     orderToggle: JQuery<HTMLElement>;
     pagingToggle: JQuery<HTMLElement>;
@@ -71,6 +75,7 @@ export interface IDefaults {
     create: boolean;
     creationModal: boolean;
     i18n: II18n;
+    modalCloseButton: boolean;
     preDefined?: {
         [keys: string]: any;
     };
@@ -78,11 +83,13 @@ export interface IDefaults {
     rename: boolean;
     save: boolean;
     saveState: ISaveState;
+    splitSecondaries: any[];
     toggle: ISaveState;
 }
 export interface ISaveState {
     colReorder: boolean;
     columns: IColumnDefault | boolean;
+    length: boolean;
     order: boolean;
     paging: boolean;
     scroller: boolean;
@@ -116,6 +123,7 @@ export interface II18nCreationModal {
         search: string;
         visible: string;
     };
+    length: string;
     name: string;
     order: string;
     paging: string;
@@ -163,6 +171,12 @@ export default class StateRestoreCollection {
      */
     destroy(): void;
     /**
+     * Identifies active states and updates their button to reflect this.
+     *
+     * @returns An array containing objects with the details of currently active states
+     */
+    findActive(): any[];
+    /**
      * Gets a single state that has the identifier matching that which is passed in
      *
      * @param identifier The value that is used to identify a state
@@ -192,7 +206,6 @@ export default class StateRestoreCollection {
      * @param identifier The default identifier for the next new state
      */
     private _creationModal;
-    private _findActive;
     /**
      * This callback is called when a state is removed.
      * This removes the state from storage and also strips it's button from the container
@@ -200,7 +213,6 @@ export default class StateRestoreCollection {
      * @param identifier The value that is used to identify a state
      */
     private _removeCallback;
-    private _getId;
     /**
      * Creates a new confirmation modal for the user to approve an action
      *

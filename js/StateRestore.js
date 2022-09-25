@@ -178,6 +178,10 @@ var StateRestore = /** @class */ (function () {
         else if (!this.c.saveState.columns) {
             state.columns = undefined;
         }
+        // Paging
+        if (!this.c.saveState.paging) {
+            state.page = undefined;
+        }
         // SearchBuilder
         if (!this.c.saveState.searchBuilder) {
             state.searchBuilder = undefined;
@@ -541,22 +545,32 @@ var StateRestore = /** @class */ (function () {
             if (keys[0][i].indexOf('_') === 0) {
                 keys[0].splice(i, 1);
                 i--;
+                continue;
             }
             // If scroller is included then we need to remove the following values
             //  as they can be different but yield the same results
-            if (keys[0][i] === 'baseRowTop' || keys[0][i] === 'baseScrollTop' || keys[0][i] === 'scrollTop') {
+            if (keys[0][i] === 'baseRowTop' ||
+                keys[0][i] === 'baseScrollTop' ||
+                keys[0][i] === 'scrollTop' ||
+                (!this.c.saveState.paging && keys[0][i] === 'page')) {
                 keys[0].splice(i, 1);
                 i--;
+                continue;
             }
         }
         for (var i = 0; i < keys[1].length; i++) {
             if (keys[1][i].indexOf('_') === 0) {
                 keys[1].splice(i, 1);
                 i--;
+                continue;
             }
-            if (keys[1][i] === 'baseRowTop' || keys[1][i] === 'baseScrollTop' || keys[1][i] === 'scrollTop') {
+            if (keys[1][i] === 'baseRowTop' ||
+                keys[1][i] === 'baseScrollTop' ||
+                keys[1][i] === 'scrollTop' ||
+                (!this.c.saveState.paging && keys[0][i] === 'page')) {
                 keys[1].splice(i, 1);
                 i--;
+                continue;
             }
         }
         if (keys[0].length === 0 && keys[1].length > 0 ||
@@ -676,7 +690,7 @@ var StateRestore = /** @class */ (function () {
             sSearch: obj.search
         };
     };
-    StateRestore.version = '1.1.0';
+    StateRestore.version = '1.1.1';
     StateRestore.classes = {
         background: 'dtsr-background',
         closeButton: 'dtsr-popover-close',

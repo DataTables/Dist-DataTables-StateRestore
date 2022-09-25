@@ -1,4 +1,4 @@
-/*! StateRestore 1.1.0
+/*! StateRestore 1.1.1
  * 2019-2022 SpryMedia Ltd - datatables.net/license
  */
 import StateRestore, { setJQuery as stateRestoreJQuery } from './StateRestore';
@@ -125,25 +125,24 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
         var removeAllCallBack = function (skipModalIn) {
             var success = true;
             var that = _this.toArray();
-            for (var i = 0; i < that.length; i) {
-                var set = that[i];
-                if (set !== undefined) {
-                    // Check if removal of states is allowed
-                    if (set.c.remove) {
-                        var tempSuccess = set.remove(skipModalIn);
-                        if (tempSuccess !== true) {
-                            success = tempSuccess;
-                            i++;
-                        }
-                        else {
-                            that.splice(i, 1);
-                        }
+            while (that.length > 0) {
+                var set = that[0];
+                if (set !== undefined && set.c.remove) {
+                    var tempSuccess = set.remove(skipModalIn);
+                    if (tempSuccess !== true) {
+                        success = tempSuccess;
                     }
+                    else {
+                        that.splice(0, 1);
+                    }
+                }
+                else {
+                    break;
                 }
             }
             return success;
         };
-        if (this.context[0]._stateRestore.c.remove) {
+        if (this.context[0]._stateRestore && this.context[0]._stateRestore.c.remove) {
             if (skipModal) {
                 removeAllCallBack(skipModal);
             }
@@ -294,6 +293,13 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
             var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
                 button[0].inst.c.buttons[0].buttons :
                 [];
+            // remove any states from the previous rebuild - if they are still there they will be added later
+            for (var i = 0; i < stateButtons.length; i++) {
+                if (stateButtons[i].extend === 'stateRestore') {
+                    stateButtons.splice(i, 1);
+                    i--;
+                }
+            }
             if (stateRestoreOpts._createInSaved) {
                 stateButtons.push('createState');
                 stateButtons.push('');
@@ -329,6 +335,19 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
             }
             dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
             node.blur();
+            // Need to disable the removeAllStates button if there are no states and it is present
+            var buttons = dt.buttons();
+            for (var _b = 0, buttons_1 = buttons; _b < buttons_1.length; _b++) {
+                var butt = buttons_1[_b];
+                if ($(butt.node).hasClass('dtsr-removeAllStates')) {
+                    if (states.length === 0) {
+                        dt.button(butt.node).disable();
+                    }
+                    else {
+                        dt.button(butt.node).enable();
+                    }
+                }
+            }
         },
         init: function (dt, node, config) {
             if (dt.settings()[0]._stateRestore === undefined && dt.button('SaveStateRestore:name').length > 1) {
@@ -352,6 +371,12 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
         action: function (e, dt, node) {
             dt.stateRestore.states().remove(true);
             node.blur();
+        },
+        className: 'dt-button dtsr-removeAllStates',
+        init: function (dt, node) {
+            if (!dt.settings()[0]._stateRestore || dt.stateRestore.states().length === 0) {
+                $(node).addClass('disabled');
+            }
         },
         text: function (dt) {
             return dt.i18n('buttons.removeAllStates', 'Remove All States');
@@ -399,6 +424,13 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
             button[0].inst.c.buttons[0].buttons :
             [];
         var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
+        // remove any states from the previous rebuild - if they are still there they will be added later
+        for (var i = 0; i < stateButtons.length; i++) {
+            if (stateButtons[i].extend === 'stateRestore') {
+                stateButtons.splice(i, 1);
+                i--;
+            }
+        }
         if (stateRestoreOpts._createInSaved) {
             stateButtons.push('createState');
         }
@@ -439,6 +471,19 @@ import StateRestoreCollection, { setJQuery as stateRestoreCollectionJQuery } fro
             }
         }
         dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
+        // Need to disable the removeAllStates button if there are no states and it is present
+        var buttons = dt.buttons();
+        for (var _a = 0, buttons_2 = buttons; _a < buttons_2.length; _a++) {
+            var butt = buttons_2[_a];
+            if ($(butt.node).hasClass('dtsr-removeAllStates')) {
+                if (states.length === 0) {
+                    dt.button(butt.node).disable();
+                }
+                else {
+                    dt.button(butt.node).enable();
+                }
+            }
+        }
     }
     // Attach a listener to the document which listens for DataTables initialisation
     // events so we can automatically initialise

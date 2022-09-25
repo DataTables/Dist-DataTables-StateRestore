@@ -461,16 +461,31 @@ var StateRestoreCollection = /** @class */ (function () {
         var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
             button[0].inst.c.buttons[0].buttons :
             [];
+        // remove any states from the previous rebuild - if they are still there they will be added later
+        for (var i = 0; i < stateButtons.length; i++) {
+            if (stateButtons[i].extend === 'stateRestore') {
+                stateButtons.splice(i, 1);
+                i--;
+            }
+        }
         if (this.c._createInSaved) {
             stateButtons.push('createState');
         }
+        var emptyText = '<span class="' + this.classes.emptyStates + '">' +
+            this.s.dt.i18n('stateRestore.emptyStates', this.c.i18n.emptyStates) +
+            '</span>';
         // If there are no states display an empty message
         if (this.s.states.length === 0) {
-            stateButtons.push('<span class="' + this.classes.emptyStates + '">' +
-                this.s.dt.i18n('stateRestore.emptyStates', this.c.i18n.emptyStates) +
-                '</span>');
+            // Don't want the empty text included more than twice
+            if (!stateButtons.includes(emptyText)) {
+                stateButtons.push(emptyText);
+            }
         }
         else {
+            // There are states to add so there shouldn't be any empty text left!
+            while (stateButtons.includes(emptyText)) {
+                stateButtons.splice(stateButtons.indexOf(emptyText), 1);
+            }
             // There is a potential issue here if sorting where the string parts of the name are the same,
             // only the number differs and there are many states - but this wouldn't be usfeul naming so
             // more of a priority to sort alphabetically
@@ -515,6 +530,19 @@ var StateRestoreCollection = /** @class */ (function () {
             }
         }
         button.collectionRebuild(stateButtons);
+        // Need to disable the removeAllStates button if there are no states and it is present
+        var buttons = this.s.dt.buttons();
+        for (var _b = 0, buttons_3 = buttons; _b < buttons_3.length; _b++) {
+            var butt = buttons_3[_b];
+            if ($(butt.node).hasClass('dtsr-removeAllStates')) {
+                if (this.s.states.length === 0) {
+                    this.s.dt.button(butt.node).disable();
+                }
+                else {
+                    this.s.dt.button(butt.node).enable();
+                }
+            }
+        }
     };
     /**
      * Displays a modal that is used to get information from the user to create a new state.

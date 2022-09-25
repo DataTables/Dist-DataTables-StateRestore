@@ -1,4 +1,4 @@
-/*! StateRestore 1.1.0
+/*! StateRestore 1.1.1
  * 2019-2022 SpryMedia Ltd - datatables.net/license
  */
 (function () {
@@ -183,6 +183,10 @@
             }
             else if (!this.c.saveState.columns) {
                 state.columns = undefined;
+            }
+            // Paging
+            if (!this.c.saveState.paging) {
+                state.page = undefined;
             }
             // SearchBuilder
             if (!this.c.saveState.searchBuilder) {
@@ -547,22 +551,32 @@
                 if (keys[0][i].indexOf('_') === 0) {
                     keys[0].splice(i, 1);
                     i--;
+                    continue;
                 }
                 // If scroller is included then we need to remove the following values
                 //  as they can be different but yield the same results
-                if (keys[0][i] === 'baseRowTop' || keys[0][i] === 'baseScrollTop' || keys[0][i] === 'scrollTop') {
+                if (keys[0][i] === 'baseRowTop' ||
+                    keys[0][i] === 'baseScrollTop' ||
+                    keys[0][i] === 'scrollTop' ||
+                    (!this.c.saveState.paging && keys[0][i] === 'page')) {
                     keys[0].splice(i, 1);
                     i--;
+                    continue;
                 }
             }
             for (var i = 0; i < keys[1].length; i++) {
                 if (keys[1][i].indexOf('_') === 0) {
                     keys[1].splice(i, 1);
                     i--;
+                    continue;
                 }
-                if (keys[1][i] === 'baseRowTop' || keys[1][i] === 'baseScrollTop' || keys[1][i] === 'scrollTop') {
+                if (keys[1][i] === 'baseRowTop' ||
+                    keys[1][i] === 'baseScrollTop' ||
+                    keys[1][i] === 'scrollTop' ||
+                    (!this.c.saveState.paging && keys[0][i] === 'page')) {
                     keys[1].splice(i, 1);
                     i--;
+                    continue;
                 }
             }
             if (keys[0].length === 0 && keys[1].length > 0 ||
@@ -682,7 +696,7 @@
                 sSearch: obj.search
             };
         };
-        StateRestore.version = '1.1.0';
+        StateRestore.version = '1.1.1';
         StateRestore.classes = {
             background: 'dtsr-background',
             closeButton: 'dtsr-popover-close',
@@ -1240,16 +1254,31 @@
             var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
                 button[0].inst.c.buttons[0].buttons :
                 [];
+            // remove any states from the previous rebuild - if they are still there they will be added later
+            for (var i = 0; i < stateButtons.length; i++) {
+                if (stateButtons[i].extend === 'stateRestore') {
+                    stateButtons.splice(i, 1);
+                    i--;
+                }
+            }
             if (this.c._createInSaved) {
                 stateButtons.push('createState');
             }
+            var emptyText = '<span class="' + this.classes.emptyStates + '">' +
+                this.s.dt.i18n('stateRestore.emptyStates', this.c.i18n.emptyStates) +
+                '</span>';
             // If there are no states display an empty message
             if (this.s.states.length === 0) {
-                stateButtons.push('<span class="' + this.classes.emptyStates + '">' +
-                    this.s.dt.i18n('stateRestore.emptyStates', this.c.i18n.emptyStates) +
-                    '</span>');
+                // Don't want the empty text included more than twice
+                if (!stateButtons.includes(emptyText)) {
+                    stateButtons.push(emptyText);
+                }
             }
             else {
+                // There are states to add so there shouldn't be any empty text left!
+                while (stateButtons.includes(emptyText)) {
+                    stateButtons.splice(stateButtons.indexOf(emptyText), 1);
+                }
                 // There is a potential issue here if sorting where the string parts of the name are the same,
                 // only the number differs and there are many states - but this wouldn't be usfeul naming so
                 // more of a priority to sort alphabetically
@@ -1294,6 +1323,19 @@
                 }
             }
             button.collectionRebuild(stateButtons);
+            // Need to disable the removeAllStates button if there are no states and it is present
+            var buttons = this.s.dt.buttons();
+            for (var _b = 0, buttons_3 = buttons; _b < buttons_3.length; _b++) {
+                var butt = buttons_3[_b];
+                if ($(butt.node).hasClass('dtsr-removeAllStates')) {
+                    if (this.s.states.length === 0) {
+                        this.s.dt.button(butt.node).disable();
+                    }
+                    else {
+                        this.s.dt.button(butt.node).enable();
+                    }
+                }
+            }
         };
         /**
          * Displays a modal that is used to get information from the user to create a new state.
@@ -1773,7 +1815,7 @@
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.1.0
+    /*! StateRestore 1.1.1
      * 2019-2022 SpryMedia Ltd - datatables.net/license
      */
     // DataTables extensions common UMD. Note that this allows for AMD, CommonJS
@@ -1898,25 +1940,24 @@
             var removeAllCallBack = function (skipModalIn) {
                 var success = true;
                 var that = _this.toArray();
-                for (var i = 0; i < that.length; i) {
-                    var set = that[i];
-                    if (set !== undefined) {
-                        // Check if removal of states is allowed
-                        if (set.c.remove) {
-                            var tempSuccess = set.remove(skipModalIn);
-                            if (tempSuccess !== true) {
-                                success = tempSuccess;
-                                i++;
-                            }
-                            else {
-                                that.splice(i, 1);
-                            }
+                while (that.length > 0) {
+                    var set = that[0];
+                    if (set !== undefined && set.c.remove) {
+                        var tempSuccess = set.remove(skipModalIn);
+                        if (tempSuccess !== true) {
+                            success = tempSuccess;
                         }
+                        else {
+                            that.splice(0, 1);
+                        }
+                    }
+                    else {
+                        break;
                     }
                 }
                 return success;
             };
-            if (this.context[0]._stateRestore.c.remove) {
+            if (this.context[0]._stateRestore && this.context[0]._stateRestore.c.remove) {
                 if (skipModal) {
                     removeAllCallBack(skipModal);
                 }
@@ -2067,6 +2108,13 @@
                 var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
                     button[0].inst.c.buttons[0].buttons :
                     [];
+                // remove any states from the previous rebuild - if they are still there they will be added later
+                for (var i = 0; i < stateButtons.length; i++) {
+                    if (stateButtons[i].extend === 'stateRestore') {
+                        stateButtons.splice(i, 1);
+                        i--;
+                    }
+                }
                 if (stateRestoreOpts._createInSaved) {
                     stateButtons.push('createState');
                     stateButtons.push('');
@@ -2102,6 +2150,19 @@
                 }
                 dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
                 node.blur();
+                // Need to disable the removeAllStates button if there are no states and it is present
+                var buttons = dt.buttons();
+                for (var _b = 0, buttons_1 = buttons; _b < buttons_1.length; _b++) {
+                    var butt = buttons_1[_b];
+                    if ($(butt.node).hasClass('dtsr-removeAllStates')) {
+                        if (states.length === 0) {
+                            dt.button(butt.node).disable();
+                        }
+                        else {
+                            dt.button(butt.node).enable();
+                        }
+                    }
+                }
             },
             init: function (dt, node, config) {
                 if (dt.settings()[0]._stateRestore === undefined && dt.button('SaveStateRestore:name').length > 1) {
@@ -2125,6 +2186,12 @@
             action: function (e, dt, node) {
                 dt.stateRestore.states().remove(true);
                 node.blur();
+            },
+            className: 'dt-button dtsr-removeAllStates',
+            init: function (dt, node) {
+                if (!dt.settings()[0]._stateRestore || dt.stateRestore.states().length === 0) {
+                    $(node).addClass('disabled');
+                }
             },
             text: function (dt) {
                 return dt.i18n('buttons.removeAllStates', 'Remove All States');
@@ -2172,6 +2239,13 @@
                 button[0].inst.c.buttons[0].buttons :
                 [];
             var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
+            // remove any states from the previous rebuild - if they are still there they will be added later
+            for (var i = 0; i < stateButtons.length; i++) {
+                if (stateButtons[i].extend === 'stateRestore') {
+                    stateButtons.splice(i, 1);
+                    i--;
+                }
+            }
             if (stateRestoreOpts._createInSaved) {
                 stateButtons.push('createState');
             }
@@ -2212,6 +2286,19 @@
                 }
             }
             dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
+            // Need to disable the removeAllStates button if there are no states and it is present
+            var buttons = dt.buttons();
+            for (var _a = 0, buttons_2 = buttons; _a < buttons_2.length; _a++) {
+                var butt = buttons_2[_a];
+                if ($(butt.node).hasClass('dtsr-removeAllStates')) {
+                    if (states.length === 0) {
+                        dt.button(butt.node).disable();
+                    }
+                    else {
+                        dt.button(butt.node).enable();
+                    }
+                }
+            }
         }
         // Attach a listener to the document which listens for DataTables initialisation
         // events so we can automatically initialise

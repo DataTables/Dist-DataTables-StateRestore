@@ -45,6 +45,7 @@ export interface IState {
     columns: IColumn[];
     length: number;
     order: Array<Array<string | number>>;
+    page: number;
     paging: any;
     scroller: any;
     search: ISearch;

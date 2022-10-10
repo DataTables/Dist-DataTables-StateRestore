@@ -1,0 +1,19 @@
+{
+    "js": [
+        "js/dataTables.stateRestore.js",
+        "js/dataTables.stateRestore.min.js",
+        "js/index.js",
+        "js/lightbox.js",
+        "js/StateRestoreCollection.js",
+        "js/StateRestore.js"
+    ],
+    "css": [],
+    "types": [
+        "types/index.d.ts",
+        "types/StateRestoreCollection.d.ts",
+        "types/StateRestore.d.ts",
+        "types/types.d.ts"
+    ],
+    "src-repo": "http://github.com/DataTables/StateRestore",
+    "last-tag": "1.1.1"
+}

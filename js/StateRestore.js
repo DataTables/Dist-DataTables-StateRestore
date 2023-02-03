@@ -690,7 +690,7 @@ var StateRestore = /** @class */ (function () {
             sSearch: obj.search
         };
     };
-    StateRestore.version = '1.2.0';
+    StateRestore.version = '1.2.1';
     StateRestore.classes = {
         background: 'dtsr-background',
         closeButton: 'dtsr-popover-close',

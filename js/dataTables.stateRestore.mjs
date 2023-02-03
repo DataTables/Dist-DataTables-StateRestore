@@ -1,4 +1,4 @@
-/*! StateRestore 1.2.0
+/*! StateRestore 1.2.1
  * 2019-2022 SpryMedia Ltd - datatables.net/license
  */
 
@@ -701,7 +701,7 @@ import DataTable from 'datatables.net';
                 sSearch: obj.search
             };
         };
-        StateRestore.version = '1.2.0';
+        StateRestore.version = '1.2.1';
         StateRestore.classes = {
             background: 'dtsr-background',
             closeButton: 'dtsr-popover-close',
@@ -1833,7 +1833,7 @@ import DataTable from 'datatables.net';
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.2.0
+    /*! StateRestore 1.2.1
      * 2019-2022 SpryMedia Ltd - datatables.net/license
      */
     setJQuery$1($);

@@ -1,10 +1,9 @@
-/*! StateRestore 1.2.0
- * 2019-2022 SpryMedia Ltd - datatables.net/license
+/*! StateRestore 1.2.2
+ * © SpryMedia Ltd - datatables.net/license
  */
 
 import $ from 'jquery';
 import DataTable from 'datatables.net';
-
 
 (function () {
     'use strict';
@@ -701,7 +700,7 @@ import DataTable from 'datatables.net';
                 sSearch: obj.search
             };
         };
-        StateRestore.version = '1.2.0';
+        StateRestore.version = '1.2.2';
         StateRestore.classes = {
             background: 'dtsr-background',
             closeButton: 'dtsr-popover-close',
@@ -1833,8 +1832,8 @@ import DataTable from 'datatables.net';
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.2.0
-     * 2019-2022 SpryMedia Ltd - datatables.net/license
+    /*! StateRestore 1.2.2
+     * © SpryMedia Ltd - datatables.net/license
      */
     setJQuery$1($);
     setJQuery($);

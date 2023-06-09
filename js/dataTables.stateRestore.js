@@ -18,7 +18,7 @@
 			}
 		};
 
-		if (typeof window !== 'undefined') {
+		if (typeof window === 'undefined') {
 			module.exports = function (root, $) {
 				if ( ! root ) {
 					// CommonJS environments without a window global must pass a
@@ -84,7 +84,7 @@ var DataTable = $.fn.dataTable;
             };
             this.dom = {
                 background: $$2('<div class="' + this.classes.background + '"/>'),
-                closeButton: $$2('<div class="' + this.classes.closeButton + '">x</div>'),
+                closeButton: $$2('<div class="' + this.classes.closeButton + '">&times;</div>'),
                 confirmation: $$2('<div class="' + this.classes.confirmation + '"/>'),
                 confirmationButton: $$2('<button class="' + this.classes.confirmationButton + ' ' + this.classes.dtButton + '">'),
                 confirmationTitleRow: $$2('<div class="' + this.classes.confirmationTitleRow + '"></div>'),

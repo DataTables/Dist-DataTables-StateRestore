@@ -2,8 +2,11 @@
  * © SpryMedia Ltd - datatables.net/license
  */
 
-import $ from 'jquery';
+import jQuery from 'jquery';
 import DataTable from 'datatables.net';
+
+// Allow reassignment of the $ variable
+let $ = jQuery;
 
 (function () {
     'use strict';
@@ -41,7 +44,7 @@ import DataTable from 'datatables.net';
             };
             this.dom = {
                 background: $$2('<div class="' + this.classes.background + '"/>'),
-                closeButton: $$2('<div class="' + this.classes.closeButton + '">x</div>'),
+                closeButton: $$2('<div class="' + this.classes.closeButton + '">&times;</div>'),
                 confirmation: $$2('<div class="' + this.classes.confirmation + '"/>'),
                 confirmationButton: $$2('<button class="' + this.classes.confirmationButton + ' ' + this.classes.dtButton + '">'),
                 confirmationTitleRow: $$2('<div class="' + this.classes.confirmationTitleRow + '"></div>'),

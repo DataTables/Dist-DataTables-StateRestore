@@ -12,19 +12,11 @@
     "css": [],
     "types": [
         "types/index.d.ts",
-        "types/stateRestore.bootstrap4.d.ts",
-        "types/stateRestore.bootstrap5.d.ts",
-        "types/stateRestore.bootstrap.d.ts",
-        "types/stateRestore.bulma.d.ts",
         "types/StateRestoreCollection.d.ts",
-        "types/stateRestore.dataTables.d.ts",
         "types/StateRestore.d.ts",
-        "types/stateRestore.foundation.d.ts",
-        "types/stateRestore.jqueryui.d.ts",
-        "types/stateRestore.semanticui.d.ts",
         "types/types.d.ts"
     ],
     "src-repo": "http://github.com/DataTables/StateRestore",
     "last-tag": "1.2.2",
-    "last-sync": "c8e4eb357a28a8736642c423ff145a9f7e90a66c"
+    "last-sync": ""
 }

@@ -1,4 +1,4 @@
-/*! StateRestore 1.2.2
+/*! StateRestore 1.3.0
  * © SpryMedia Ltd - datatables.net/license
  */
 
@@ -743,7 +743,7 @@ var DataTable = $.fn.dataTable;
                 sSearch: obj.search
             };
         };
-        StateRestore.version = '1.2.2';
+        StateRestore.version = '1.3.0';
         StateRestore.classes = {
             background: 'dtsr-background',
             closeButton: 'dtsr-popover-close',
@@ -1875,7 +1875,7 @@ var DataTable = $.fn.dataTable;
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.2.2
+    /*! StateRestore 1.3.0
      * © SpryMedia Ltd - datatables.net/license
      */
     setJQuery$1($);

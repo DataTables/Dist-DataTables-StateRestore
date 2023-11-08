@@ -295,7 +295,7 @@ DataTable.ext.buttons.createState = {
         }
         for (var _a = 0, states_3 = states; _a < states_3.length; _a++) {
             var state = states_3[_a];
-            var split = Object.assign([], stateRestoreOpts.splitSecondaries);
+            var split = stateRestoreOpts.splitSecondaries.slice();
             if (split.includes('updateState') && !stateRestoreOpts.save) {
                 split.splice(split.indexOf('updateState'), 1);
             }
@@ -444,7 +444,7 @@ function _stateRegen(dt, src) {
     else {
         for (var _i = 0, states_5 = states; _i < states_5.length; _i++) {
             var state = states_5[_i];
-            var split = Object.assign([], stateRestoreOpts.splitSecondaries);
+            var split = stateRestoreOpts.splitSecondaries.slice();
             if (split.includes('updateState') && !stateRestoreOpts.save) {
                 split.splice(split.indexOf('updateState'), 1);
             }

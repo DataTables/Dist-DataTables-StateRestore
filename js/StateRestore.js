@@ -226,7 +226,9 @@ var StateRestore = /** @class */ (function () {
      * Removes all of the dom elements from the document
      */
     StateRestore.prototype.destroy = function () {
-        Object.values(this.dom).forEach(function (node) { return node.off().remove(); });
+        $.each(this.dom, function (name, el) {
+            el.off().remove();
+        });
     };
     /**
      * Loads the state referenced by the identifier from storage
@@ -243,8 +245,7 @@ var StateRestore = /** @class */ (function () {
         settings.oLoadedState = $.extend(true, {}, loadedState);
         // Click on a background if there is one to shut the collection
         $('div.dt-button-background').click();
-        // Call the internal datatables function to implement the state on the table
-        $.fn.dataTable.ext.oApi._fnImplementState(settings, loadedState, function () {
+        var loaded = function () {
             var correctPaging = function (e, preSettings) {
                 setTimeout(function () {
                     var currpage = preSettings._iDisplayStart / preSettings._iDisplayLength;
@@ -259,7 +260,16 @@ var StateRestore = /** @class */ (function () {
             };
             _this.s.dt.one('preDraw', correctPaging);
             _this.s.dt.draw(false);
-        });
+        };
+        // Call the internal datatables function to implement the state on the table
+        if (DataTable.versionCheck('2')) {
+            this.s.dt.state(loadedState);
+            loaded();
+        }
+        else {
+            // Legacy
+            DataTable.ext.oApi._fnImplementState(settings, loadedState, loaded);
+        }
         return loadedState;
     };
     /**
@@ -673,22 +683,6 @@ var StateRestore = /** @class */ (function () {
             $(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
         });
         $(document).on('keyup', function (e) { return _this._keyupFunction(e); });
-    };
-    /**
-     * Convert from camelCase notation to the internal Hungarian.
-     * We could use the Hungarian convert function here, but this is cleaner
-     *
-     * @param {object} obj Object to convert
-     * @returns {object} Inverted object
-     * @memberof DataTable#oApi
-     */
-    StateRestore.prototype._searchToHung = function (obj) {
-        return {
-            bCaseInsensitive: obj.caseInsensitive,
-            bRegex: obj.regex,
-            bSmart: obj.smart,
-            sSearch: obj.search
-        };
     };
     StateRestore.version = '1.3.0';
     StateRestore.classes = {

@@ -322,9 +322,8 @@ var StateRestoreCollection = /** @class */ (function () {
             var state = _a[_i];
             state.destroy();
         }
-        Object.values(this.dom).forEach(function (node) {
-            node.off();
-            node.remove();
+        $.each(this.dom, function (name, el) {
+            el.off().remove();
         });
         this.s.states = [];
         this.s.dt.off('.dtsr');
@@ -514,7 +513,7 @@ var StateRestoreCollection = /** @class */ (function () {
             // Construct the split property of each button
             for (var _i = 0, _a = this.s.states; _i < _a.length; _i++) {
                 var state = _a[_i];
-                var split = Object.assign([], this.c.splitSecondaries);
+                var split = this.c.splitSecondaries.slice();
                 if (split.includes('updateState') && (!this.c.save || !state.c.save)) {
                     split.splice(split.indexOf('updateState'), 1);
                 }

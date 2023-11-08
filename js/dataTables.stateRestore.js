@@ -279,7 +279,9 @@ var DataTable = $.fn.dataTable;
          * Removes all of the dom elements from the document
          */
         StateRestore.prototype.destroy = function () {
-            Object.values(this.dom).forEach(function (node) { return node.off().remove(); });
+            $$2.each(this.dom, function (name, el) {
+                el.off().remove();
+            });
         };
         /**
          * Loads the state referenced by the identifier from storage
@@ -296,8 +298,7 @@ var DataTable = $.fn.dataTable;
             settings.oLoadedState = $$2.extend(true, {}, loadedState);
             // Click on a background if there is one to shut the collection
             $$2('div.dt-button-background').click();
-            // Call the internal datatables function to implement the state on the table
-            $$2.fn.dataTable.ext.oApi._fnImplementState(settings, loadedState, function () {
+            var loaded = function () {
                 var correctPaging = function (e, preSettings) {
                     setTimeout(function () {
                         var currpage = preSettings._iDisplayStart / preSettings._iDisplayLength;
@@ -312,7 +313,16 @@ var DataTable = $.fn.dataTable;
                 };
                 _this.s.dt.one('preDraw', correctPaging);
                 _this.s.dt.draw(false);
-            });
+            };
+            // Call the internal datatables function to implement the state on the table
+            if (DataTable.versionCheck('2')) {
+                this.s.dt.state(loadedState);
+                loaded();
+            }
+            else {
+                // Legacy
+                DataTable.ext.oApi._fnImplementState(settings, loadedState, loaded);
+            }
             return loadedState;
         };
         /**
@@ -726,22 +736,6 @@ var DataTable = $.fn.dataTable;
                 $$2(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
             });
             $$2(document).on('keyup', function (e) { return _this._keyupFunction(e); });
-        };
-        /**
-         * Convert from camelCase notation to the internal Hungarian.
-         * We could use the Hungarian convert function here, but this is cleaner
-         *
-         * @param {object} obj Object to convert
-         * @returns {object} Inverted object
-         * @memberof DataTable#oApi
-         */
-        StateRestore.prototype._searchToHung = function (obj) {
-            return {
-                bCaseInsensitive: obj.caseInsensitive,
-                bRegex: obj.regex,
-                bSmart: obj.smart,
-                sSearch: obj.search
-            };
         };
         StateRestore.version = '1.3.0';
         StateRestore.classes = {
@@ -1162,9 +1156,8 @@ var DataTable = $.fn.dataTable;
                 var state = _a[_i];
                 state.destroy();
             }
-            Object.values(this.dom).forEach(function (node) {
-                node.off();
-                node.remove();
+            $$1.each(this.dom, function (name, el) {
+                el.off().remove();
             });
             this.s.states = [];
             this.s.dt.off('.dtsr');
@@ -1354,7 +1347,7 @@ var DataTable = $.fn.dataTable;
                 // Construct the split property of each button
                 for (var _i = 0, _a = this.s.states; _i < _a.length; _i++) {
                     var state = _a[_i];
-                    var split = Object.assign([], this.c.splitSecondaries);
+                    var split = this.c.splitSecondaries.slice();
                     if (split.includes('updateState') && (!this.c.save || !state.c.save)) {
                         split.splice(split.indexOf('updateState'), 1);
                     }
@@ -2152,7 +2145,7 @@ var DataTable = $.fn.dataTable;
             }
             for (var _a = 0, states_3 = states; _a < states_3.length; _a++) {
                 var state = states_3[_a];
-                var split = Object.assign([], stateRestoreOpts.splitSecondaries);
+                var split = stateRestoreOpts.splitSecondaries.slice();
                 if (split.includes('updateState') && !stateRestoreOpts.save) {
                     split.splice(split.indexOf('updateState'), 1);
                 }
@@ -2301,7 +2294,7 @@ var DataTable = $.fn.dataTable;
         else {
             for (var _i = 0, states_5 = states; _i < states_5.length; _i++) {
                 var state = states_5[_i];
-                var split = Object.assign([], stateRestoreOpts.splitSecondaries);
+                var split = stateRestoreOpts.splitSecondaries.slice();
                 if (split.includes('updateState') && !stateRestoreOpts.save) {
                     split.splice(split.indexOf('updateState'), 1);
                 }

@@ -536,22 +536,23 @@ var StateRestore = /** @class */ (function () {
         // Put keys and states into arrays as this makes the later code easier to work
         var states = [state1, state2];
         var keys = [Object.keys(state1).sort(), Object.keys(state2).sort()];
+        var startIdx, i;
         // If scroller is included then we need to remove the start value
         //  as it can be different but yield the same results
         if (keys[0].includes('scroller')) {
-            var startIdx = keys[0].indexOf('start');
+            startIdx = keys[0].indexOf('start');
             if (startIdx) {
                 keys[0].splice(startIdx, 1);
             }
         }
         if (keys[1].includes('scroller')) {
-            var startIdx = keys[1].indexOf('start');
+            startIdx = keys[1].indexOf('start');
             if (startIdx) {
                 keys[1].splice(startIdx, 1);
             }
         }
         // We want to remove any private properties within the states
-        for (var i = 0; i < keys[0].length; i++) {
+        for (i = 0; i < keys[0].length; i++) {
             if (keys[0][i].indexOf('_') === 0) {
                 keys[0].splice(i, 1);
                 i--;
@@ -568,7 +569,7 @@ var StateRestore = /** @class */ (function () {
                 continue;
             }
         }
-        for (var i = 0; i < keys[1].length; i++) {
+        for (i = 0; i < keys[1].length; i++) {
             if (keys[1][i].indexOf('_') === 0) {
                 keys[1].splice(i, 1);
                 i--;
@@ -588,20 +589,20 @@ var StateRestore = /** @class */ (function () {
             return false;
         }
         // We are only going to compare the keys that are common between both states
-        for (var i = 0; i < keys[0].length; i++) {
+        for (i = 0; i < keys[0].length; i++) {
             if (!keys[1].includes(keys[0][i])) {
                 keys[0].splice(i, 1);
                 i--;
             }
         }
-        for (var i = 0; i < keys[1].length; i++) {
+        for (i = 0; i < keys[1].length; i++) {
             if (!keys[0].includes(keys[1][i])) {
                 keys[1].splice(i, 1);
                 i--;
             }
         }
         // Then each key and value has to be checked against each other
-        for (var i = 0; i < keys[0].length; i++) {
+        for (i = 0; i < keys[0].length; i++) {
             // If the keys dont equal, or their corresponding types are different we can return false
             if (keys[0][i] !== keys[1][i] || typeof states[0][keys[0][i]] !== typeof states[1][keys[1][i]]) {
                 return false;

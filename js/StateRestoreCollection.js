@@ -338,6 +338,7 @@ var StateRestoreCollection = /** @class */ (function () {
         // Make sure that the state is up to date
         this.s.dt.state.save();
         var currState = this.s.dt.state();
+        var button;
         // Make all of the buttons inactive so that only any that match will be marked as active
         var buttons = $('button.' + $.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
         // Some of the styling libraries use a tags instead of buttons
@@ -345,7 +346,7 @@ var StateRestoreCollection = /** @class */ (function () {
             buttons = $('a.' + $.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
         }
         for (var _i = 0, buttons_1 = buttons; _i < buttons_1.length; _i++) {
-            var button = buttons_1[_i];
+            button = buttons_1[_i];
             this.s.dt.button($(button).parent()[0]).active(false);
         }
         var results = [];
@@ -359,7 +360,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 });
                 // If so, find the corresponding button and mark it as active
                 for (var _c = 0, buttons_2 = buttons; _c < buttons_2.length; _c++) {
-                    var button = buttons_2[_c];
+                    button = buttons_2[_c];
                     if ($(button).text() === state.s.identifier) {
                         this.s.dt.button($(button).parent()[0]).active(true);
                         break;
@@ -458,12 +459,13 @@ var StateRestoreCollection = /** @class */ (function () {
     StateRestoreCollection.prototype._collectionRebuild = function () {
         var button = this.s.dt.button('SaveStateRestore:name');
         var stateButtons = [];
+        var i;
         // Need to get the original configuration object, so we can rebuild it
         // It might be nested, so need to traverse down the tree
         if (button[0]) {
             var idxs = button.index().split('-');
             stateButtons = button[0].inst.c.buttons;
-            for (var i = 0; i < idxs.length; i++) {
+            for (i = 0; i < idxs.length; i++) {
                 if (stateButtons[idxs[i]].buttons) {
                     stateButtons = stateButtons[idxs[i]].buttons;
                 }
@@ -474,7 +476,7 @@ var StateRestoreCollection = /** @class */ (function () {
             }
         }
         // remove any states from the previous rebuild - if they are still there they will be added later
-        for (var i = 0; i < stateButtons.length; i++) {
+        for (i = 0; i < stateButtons.length; i++) {
             if (stateButtons[i].extend === 'stateRestore') {
                 stateButtons.splice(i, 1);
                 i--;
@@ -569,6 +571,7 @@ var StateRestoreCollection = /** @class */ (function () {
         this.dom.nameInputRow.children('input').val(identifier);
         this.dom.creationForm.append(this.dom.nameInputRow);
         var tableConfig = this.s.dt.settings()[0].oInit;
+        var toggle;
         var togglesToInsert = [];
         var toggleDefined = options !== undefined && options.toggle !== undefined;
         // Order toggle - check toggle and saving enabled
@@ -699,7 +702,7 @@ var StateRestoreCollection = /** @class */ (function () {
         });
         // Append all of the toggles that are to be inserted
         for (var _i = 0, togglesToInsert_1 = togglesToInsert; _i < togglesToInsert_1.length; _i++) {
-            var toggle = togglesToInsert_1[_i];
+            toggle = togglesToInsert_1[_i];
             this.dom.creationForm.append(toggle);
         }
         // Insert the toggle label next to the first check box
@@ -712,15 +715,12 @@ var StateRestoreCollection = /** @class */ (function () {
             .append(this.dom.createButtonRow)
             .appendTo(this.dom.dtContainer);
         $(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-        var _loop_2 = function (toggle) {
+        // Allow the label to be clicked to toggle the checkbox
+        for (var _a = 0, togglesToInsert_2 = togglesToInsert; _a < togglesToInsert_2.length; _a++) {
+            toggle = togglesToInsert_2[_a];
             $(toggle.children('label:last-child')).on('click', function () {
                 toggle.children('input').prop('checked', !toggle.children('input').prop('checked'));
             });
-        };
-        // Allow the label to be clicked to toggle the checkbox
-        for (var _a = 0, togglesToInsert_2 = togglesToInsert; _a < togglesToInsert_2.length; _a++) {
-            var toggle = togglesToInsert_2[_a];
-            _loop_2(toggle);
         }
         var creationButton = $('button.' + this.classes.creationButton.replace(/ /g, '.'));
         var inputs = this.dom.creationForm.find('input');
@@ -881,7 +881,7 @@ var StateRestoreCollection = /** @class */ (function () {
     StateRestoreCollection.prototype._searchForStates = function () {
         var _this = this;
         var keys = Object.keys(localStorage);
-        var _loop_3 = function (key) {
+        var _loop_2 = function (key) {
             // eslint-disable-next-line no-useless-escape
             if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') + '$')) ||
                 key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') +
@@ -909,7 +909,7 @@ var StateRestoreCollection = /** @class */ (function () {
         var this_2 = this;
         for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
             var key = keys_1[_i];
-            _loop_3(key);
+            _loop_2(key);
         }
     };
     StateRestoreCollection.version = '1.0.0';

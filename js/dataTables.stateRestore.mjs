@@ -549,22 +549,23 @@ let $ = jQuery;
             // Put keys and states into arrays as this makes the later code easier to work
             var states = [state1, state2];
             var keys = [Object.keys(state1).sort(), Object.keys(state2).sort()];
+            var startIdx, i;
             // If scroller is included then we need to remove the start value
             //  as it can be different but yield the same results
             if (keys[0].includes('scroller')) {
-                var startIdx = keys[0].indexOf('start');
+                startIdx = keys[0].indexOf('start');
                 if (startIdx) {
                     keys[0].splice(startIdx, 1);
                 }
             }
             if (keys[1].includes('scroller')) {
-                var startIdx = keys[1].indexOf('start');
+                startIdx = keys[1].indexOf('start');
                 if (startIdx) {
                     keys[1].splice(startIdx, 1);
                 }
             }
             // We want to remove any private properties within the states
-            for (var i = 0; i < keys[0].length; i++) {
+            for (i = 0; i < keys[0].length; i++) {
                 if (keys[0][i].indexOf('_') === 0) {
                     keys[0].splice(i, 1);
                     i--;
@@ -581,7 +582,7 @@ let $ = jQuery;
                     continue;
                 }
             }
-            for (var i = 0; i < keys[1].length; i++) {
+            for (i = 0; i < keys[1].length; i++) {
                 if (keys[1][i].indexOf('_') === 0) {
                     keys[1].splice(i, 1);
                     i--;
@@ -601,20 +602,20 @@ let $ = jQuery;
                 return false;
             }
             // We are only going to compare the keys that are common between both states
-            for (var i = 0; i < keys[0].length; i++) {
+            for (i = 0; i < keys[0].length; i++) {
                 if (!keys[1].includes(keys[0][i])) {
                     keys[0].splice(i, 1);
                     i--;
                 }
             }
-            for (var i = 0; i < keys[1].length; i++) {
+            for (i = 0; i < keys[1].length; i++) {
                 if (!keys[0].includes(keys[1][i])) {
                     keys[1].splice(i, 1);
                     i--;
                 }
             }
             // Then each key and value has to be checked against each other
-            for (var i = 0; i < keys[0].length; i++) {
+            for (i = 0; i < keys[0].length; i++) {
                 // If the keys dont equal, or their corresponding types are different we can return false
                 if (keys[0][i] !== keys[1][i] || typeof states[0][keys[0][i]] !== typeof states[1][keys[1][i]]) {
                     return false;
@@ -1132,6 +1133,7 @@ let $ = jQuery;
             // Make sure that the state is up to date
             this.s.dt.state.save();
             var currState = this.s.dt.state();
+            var button;
             // Make all of the buttons inactive so that only any that match will be marked as active
             var buttons = $$1('button.' + $$1.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
             // Some of the styling libraries use a tags instead of buttons
@@ -1139,7 +1141,7 @@ let $ = jQuery;
                 buttons = $$1('a.' + $$1.fn.DataTable.Buttons.defaults.dom.button.className.replace(/ /g, '.'));
             }
             for (var _i = 0, buttons_1 = buttons; _i < buttons_1.length; _i++) {
-                var button = buttons_1[_i];
+                button = buttons_1[_i];
                 this.s.dt.button($$1(button).parent()[0]).active(false);
             }
             var results = [];
@@ -1153,7 +1155,7 @@ let $ = jQuery;
                     });
                     // If so, find the corresponding button and mark it as active
                     for (var _c = 0, buttons_2 = buttons; _c < buttons_2.length; _c++) {
-                        var button = buttons_2[_c];
+                        button = buttons_2[_c];
                         if ($$1(button).text() === state.s.identifier) {
                             this.s.dt.button($$1(button).parent()[0]).active(true);
                             break;
@@ -1252,12 +1254,13 @@ let $ = jQuery;
         StateRestoreCollection.prototype._collectionRebuild = function () {
             var button = this.s.dt.button('SaveStateRestore:name');
             var stateButtons = [];
+            var i;
             // Need to get the original configuration object, so we can rebuild it
             // It might be nested, so need to traverse down the tree
             if (button[0]) {
                 var idxs = button.index().split('-');
                 stateButtons = button[0].inst.c.buttons;
-                for (var i = 0; i < idxs.length; i++) {
+                for (i = 0; i < idxs.length; i++) {
                     if (stateButtons[idxs[i]].buttons) {
                         stateButtons = stateButtons[idxs[i]].buttons;
                     }
@@ -1268,7 +1271,7 @@ let $ = jQuery;
                 }
             }
             // remove any states from the previous rebuild - if they are still there they will be added later
-            for (var i = 0; i < stateButtons.length; i++) {
+            for (i = 0; i < stateButtons.length; i++) {
                 if (stateButtons[i].extend === 'stateRestore') {
                     stateButtons.splice(i, 1);
                     i--;
@@ -1363,6 +1366,7 @@ let $ = jQuery;
             this.dom.nameInputRow.children('input').val(identifier);
             this.dom.creationForm.append(this.dom.nameInputRow);
             var tableConfig = this.s.dt.settings()[0].oInit;
+            var toggle;
             var togglesToInsert = [];
             var toggleDefined = options !== undefined && options.toggle !== undefined;
             // Order toggle - check toggle and saving enabled
@@ -1493,7 +1497,7 @@ let $ = jQuery;
             });
             // Append all of the toggles that are to be inserted
             for (var _i = 0, togglesToInsert_1 = togglesToInsert; _i < togglesToInsert_1.length; _i++) {
-                var toggle = togglesToInsert_1[_i];
+                toggle = togglesToInsert_1[_i];
                 this.dom.creationForm.append(toggle);
             }
             // Insert the toggle label next to the first check box
@@ -1506,15 +1510,12 @@ let $ = jQuery;
                 .append(this.dom.createButtonRow)
                 .appendTo(this.dom.dtContainer);
             $$1(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-            var _loop_2 = function (toggle) {
+            // Allow the label to be clicked to toggle the checkbox
+            for (var _a = 0, togglesToInsert_2 = togglesToInsert; _a < togglesToInsert_2.length; _a++) {
+                toggle = togglesToInsert_2[_a];
                 $$1(toggle.children('label:last-child')).on('click', function () {
                     toggle.children('input').prop('checked', !toggle.children('input').prop('checked'));
                 });
-            };
-            // Allow the label to be clicked to toggle the checkbox
-            for (var _a = 0, togglesToInsert_2 = togglesToInsert; _a < togglesToInsert_2.length; _a++) {
-                var toggle = togglesToInsert_2[_a];
-                _loop_2(toggle);
             }
             var creationButton = $$1('button.' + this.classes.creationButton.replace(/ /g, '.'));
             var inputs = this.dom.creationForm.find('input');
@@ -1675,7 +1676,7 @@ let $ = jQuery;
         StateRestoreCollection.prototype._searchForStates = function () {
             var _this = this;
             var keys = Object.keys(localStorage);
-            var _loop_3 = function (key) {
+            var _loop_2 = function (key) {
                 // eslint-disable-next-line no-useless-escape
                 if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') + '$')) ||
                     key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') +
@@ -1703,7 +1704,7 @@ let $ = jQuery;
             var this_2 = this;
             for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
                 var key = keys_1[_i];
-                _loop_3(key);
+                _loop_2(key);
             }
         };
         StateRestoreCollection.version = '1.0.0';
@@ -2043,8 +2044,8 @@ let $ = jQuery;
                 var splitString = defaultString.split('%d');
                 replaceRegex = [];
                 for (var _i = 0, splitString_1 = splitString; _i < splitString_1.length; _i++) {
-                    var split = splitString_1[_i];
-                    replaceRegex.push(new RegExp(split));
+                    var parts = splitString_1[_i];
+                    replaceRegex.push(new RegExp(parts));
                 }
             }
             var getId = function (identifier) {
@@ -2220,12 +2221,13 @@ let $ = jQuery;
         var states = dt.stateRestore.states();
         var button = dt.button('SaveStateRestore:name');
         var stateButtons = [];
+        var i;
         // Need to get the original configuration object, so we can rebuild it
         // It might be nested, so need to traverse down the tree
         if (button[0]) {
             var idxs = button.index().split('-');
             stateButtons = button[0].inst.c.buttons;
-            for (var i = 0; i < idxs.length; i++) {
+            for (i = 0; i < idxs.length; i++) {
                 if (stateButtons[idxs[i]].buttons) {
                     stateButtons = stateButtons[idxs[i]].buttons;
                 }
@@ -2237,7 +2239,7 @@ let $ = jQuery;
         }
         var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
         // remove any states from the previous rebuild - if they are still there they will be added later
-        for (var i = 0; i < stateButtons.length; i++) {
+        for (i = 0; i < stateButtons.length; i++) {
             if (stateButtons[i].extend === 'stateRestore') {
                 stateButtons.splice(i, 1);
                 i--;

@@ -233,8 +233,8 @@ DataTable.ext.buttons.createState = {
             var splitString = defaultString.split('%d');
             replaceRegex = [];
             for (var _i = 0, splitString_1 = splitString; _i < splitString_1.length; _i++) {
-                var split = splitString_1[_i];
-                replaceRegex.push(new RegExp(split));
+                var parts = splitString_1[_i];
+                replaceRegex.push(new RegExp(parts));
             }
         }
         var getId = function (identifier) {
@@ -410,12 +410,13 @@ function _stateRegen(dt, src) {
     var states = dt.stateRestore.states();
     var button = dt.button('SaveStateRestore:name');
     var stateButtons = [];
+    var i;
     // Need to get the original configuration object, so we can rebuild it
     // It might be nested, so need to traverse down the tree
     if (button[0]) {
         var idxs = button.index().split('-');
         stateButtons = button[0].inst.c.buttons;
-        for (var i = 0; i < idxs.length; i++) {
+        for (i = 0; i < idxs.length; i++) {
             if (stateButtons[idxs[i]].buttons) {
                 stateButtons = stateButtons[idxs[i]].buttons;
             }
@@ -427,7 +428,7 @@ function _stateRegen(dt, src) {
     }
     var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
     // remove any states from the previous rebuild - if they are still there they will be added later
-    for (var i = 0; i < stateButtons.length; i++) {
+    for (i = 0; i < stateButtons.length; i++) {
         if (stateButtons[i].extend === 'stateRestore') {
             stateButtons.splice(i, 1);
             i--;

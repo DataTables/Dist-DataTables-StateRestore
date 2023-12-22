@@ -41,33 +41,33 @@ var StateRestoreCollection = /** @class */ (function () {
         });
         this.dom = {
             background: $('<div class="' + this.classes.background + '"/>'),
+            checkboxInputRow: $('<div class="' + this.classes.formRow + '">' +
+                '<label class="' + this.classes.nameLabel + '">' +
+                this.s.dt.i18n('stateRestore.creationModal.toggleLabel', this.c.i18n.creationModal.toggleLabel) +
+                '</label>' +
+                '<div class="dtsr-input"></div>' +
+                '</div>'),
             closeButton: $('<div class="' + this.classes.closeButton + '">x</div>'),
-            colReorderToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            colReorderToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.colReorderToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.colReorder', this.c.i18n.creationModal.colReorder) +
-                '</label>' +
                 '</div>'),
-            columnsSearchToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            columnsSearchToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.columnsSearchToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.columns.search', this.c.i18n.creationModal.columns.search) +
-                '</label>' +
                 '</div>'),
-            columnsVisibleToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + ' ' + '">' +
+            columnsVisibleToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.columnsVisibleToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.columns.visible', this.c.i18n.creationModal.columns.visible) +
-                '</label>' +
                 '</div>'),
             confirmation: $('<div class="' + this.classes.confirmation + '"/>'),
             confirmationTitleRow: $('<div class="' + this.classes.confirmationTitleRow + '"></div>'),
@@ -90,38 +90,34 @@ var StateRestoreCollection = /** @class */ (function () {
             emptyError: $('<span class="' + this.classes.modalError + '">' +
                 this.s.dt.i18n('stateRestore.emptyError', this.c.i18n.emptyError) +
                 '</span>'),
-            lengthToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            lengthToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.lengthToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.length', this.c.i18n.creationModal.length) +
-                '</label>' +
                 '</div>'),
             nameInputRow: $('<div class="' + this.classes.formRow + '">' +
                 '<label class="' + this.classes.nameLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.name', this.c.i18n.creationModal.name) +
                 '</label>' +
+                '<div class="dtsr-input">' +
                 '<input class="' + this.classes.nameInput + '" type="text">' +
+                '</div>' +
                 '</div>'),
-            orderToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            orderToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.orderToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.order', this.c.i18n.creationModal.order) +
-                '</label>' +
                 '</div>'),
-            pagingToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            pagingToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.pagingToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.paging', this.c.i18n.creationModal.paging) +
-                '</label>' +
                 '</div>'),
             removeContents: $('<div class="' + this.classes.confirmationText + '"><span></span></div>'),
             removeTitle: $('<div class="' + this.classes.creationText + '">' +
@@ -129,54 +125,41 @@ var StateRestoreCollection = /** @class */ (function () {
                 this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle) +
                 '</h2>' +
                 '</div>'),
-            scrollerToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            scrollerToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.scrollerToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.scroller', this.c.i18n.creationModal.scroller) +
-                '</label>' +
                 '</div>'),
-            searchBuilderToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            searchBuilderToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.searchBuilderToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.searchBuilder', this.c.i18n.creationModal.searchBuilder) +
-                '</label>' +
                 '</div>'),
-            searchPanesToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            searchPanesToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.searchPanesToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.searchPanes', this.c.i18n.creationModal.searchPanes) +
-                '</label>' +
                 '</div>'),
-            searchToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            searchToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.searchToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.search', this.c.i18n.creationModal.search) +
-                '</label>' +
                 '</div>'),
-            selectToggle: $('<div class="' + this.classes.formRow + ' ' + this.classes.checkRow + '">' +
+            selectToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
                 this.classes.selectToggle + ' ' +
                 this.classes.checkBox +
                 '" checked>' +
-                '<label class="' + this.classes.checkLabel + '">' +
                 this.s.dt.i18n('stateRestore.creationModal.select', this.c.i18n.creationModal.select) +
-                '</label>' +
-                '</div>'),
-            toggleLabel: $('<label class="' + this.classes.nameLabel + ' ' + this.classes.toggleLabel + '">' +
-                this.s.dt.i18n('stateRestore.creationModal.toggleLabel', this.c.i18n.creationModal.toggleLabel) +
-                '</label>')
+                '</div>')
         };
         table.settings()[0]._stateRestore = this;
         this._searchForStates();
@@ -568,7 +551,7 @@ var StateRestoreCollection = /** @class */ (function () {
         var _this = this;
         this.dom.creation.empty();
         this.dom.creationForm.empty();
-        this.dom.nameInputRow.children('input').val(identifier);
+        this.dom.nameInputRow.find('input').val(identifier);
         this.dom.creationForm.append(this.dom.nameInputRow);
         var tableConfig = this.s.dt.settings()[0].oInit;
         var toggle;
@@ -688,8 +671,8 @@ var StateRestoreCollection = /** @class */ (function () {
         }
         // Make sure that the toggles are displayed alphabetically
         togglesToInsert.sort(function (a, b) {
-            var aVal = a.children('label.dtsr-check-label')[0].innerHTML;
-            var bVal = b.children('label.dtsr-check-label')[0].innerHTML;
+            var aVal = a.text();
+            var bVal = b.text();
             if (aVal < bVal) {
                 return -1;
             }
@@ -701,12 +684,18 @@ var StateRestoreCollection = /** @class */ (function () {
             }
         });
         // Append all of the toggles that are to be inserted
+        var checkboxesEl = this.dom.checkboxInputRow
+            .appendTo(this.dom.creationForm)
+            .find('div.dtsr-input')
+            .empty();
+        // let checkboxes = $('<div class="'+this.classes.formRow+' '+this.classes.checkRow+'"></div>')
+        // 	.appendTo(this.dom.creationForm);
         for (var _i = 0, togglesToInsert_1 = togglesToInsert; _i < togglesToInsert_1.length; _i++) {
             toggle = togglesToInsert_1[_i];
-            this.dom.creationForm.append(toggle);
+            checkboxesEl.append(toggle);
         }
         // Insert the toggle label next to the first check box
-        $(this.dom.creationForm.children('div.' + this.classes.checkRow)[0]).prepend(this.dom.toggleLabel);
+        // $(this.dom.creationForm.children('div.'+this.classes.checkRow)[0]).prepend(this.dom.toggleLabel);
         // Insert the creation modal and the background
         this.dom.background.appendTo(this.dom.dtContainer);
         this.dom.creation
@@ -976,7 +965,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 searchPanes: 'SearchPanes',
                 select: 'Select',
                 title: 'Create New State',
-                toggleLabel: 'Includes:'
+                toggleLabel: 'Include:'
             },
             duplicateError: 'A state with this name already exists.',
             emptyError: 'Name cannot be empty.',

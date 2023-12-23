@@ -1344,10 +1344,6 @@ var DataTable = $.fn.dataTable;
                     if (split.includes('removeState') && (!this.c.remove || !state.c.remove)) {
                         split.splice(split.indexOf('removeState'), 1);
                     }
-                    if (split.length > 0 &&
-                        !split.includes('<h3>' + state.s.identifier + '</h3>')) {
-                        split.unshift('<h3>' + state.s.identifier + '</h3>');
-                    }
                     stateButtons.push({
                         _stateRestore: state,
                         attr: {
@@ -1357,7 +1353,8 @@ var DataTable = $.fn.dataTable;
                             split: split
                         },
                         extend: 'stateRestore',
-                        text: state.s.identifier
+                        text: state.s.identifier,
+                        popoverTitle: state.s.identifier
                     });
                 }
             }
@@ -2146,10 +2143,6 @@ var DataTable = $.fn.dataTable;
                 if (split.includes('removeState') && !stateRestoreOpts.remove) {
                     split.splice(split.indexOf('removeState'), 1);
                 }
-                if (split.length > 0 &&
-                    !split.includes('<h3>' + state.s.identifier + '</h3>')) {
-                    split.unshift('<h3>' + state.s.identifier + '</h3>');
-                }
                 stateButtons.push({
                     _stateRestore: state,
                     attr: {
@@ -2159,7 +2152,8 @@ var DataTable = $.fn.dataTable;
                         split: split
                     },
                     extend: 'stateRestore',
-                    text: state.s.identifier
+                    text: state.s.identifier,
+                    popoverTitle: state.s.identifier
                 });
             }
             dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
@@ -2296,10 +2290,6 @@ var DataTable = $.fn.dataTable;
                 if (split.includes('removeState') && !stateRestoreOpts.remove) {
                     split.splice(split.indexOf('removeState'), 1);
                 }
-                if (split.length > 0 &&
-                    !split.includes('<h3>' + state.s.identifier + '</h3>')) {
-                    split.unshift('<h3>' + state.s.identifier + '</h3>');
-                }
                 stateButtons.push({
                     _stateRestore: state,
                     attr: {
@@ -2309,7 +2299,8 @@ var DataTable = $.fn.dataTable;
                         split: split
                     },
                     extend: 'stateRestore',
-                    text: state.s.identifier
+                    text: state.s.identifier,
+                    popoverTitle: state.s.identifier
                 });
             }
         }

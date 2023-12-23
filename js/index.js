@@ -306,10 +306,6 @@ DataTable.ext.buttons.createState = {
             if (split.includes('removeState') && !stateRestoreOpts.remove) {
                 split.splice(split.indexOf('removeState'), 1);
             }
-            if (split.length > 0 &&
-                !split.includes('<h3>' + state.s.identifier + '</h3>')) {
-                split.unshift('<h3>' + state.s.identifier + '</h3>');
-            }
             stateButtons.push({
                 _stateRestore: state,
                 attr: {
@@ -319,7 +315,8 @@ DataTable.ext.buttons.createState = {
                     split: split
                 },
                 extend: 'stateRestore',
-                text: state.s.identifier
+                text: state.s.identifier,
+                popoverTitle: state.s.identifier
             });
         }
         dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
@@ -456,10 +453,6 @@ function _stateRegen(dt, src) {
             if (split.includes('removeState') && !stateRestoreOpts.remove) {
                 split.splice(split.indexOf('removeState'), 1);
             }
-            if (split.length > 0 &&
-                !split.includes('<h3>' + state.s.identifier + '</h3>')) {
-                split.unshift('<h3>' + state.s.identifier + '</h3>');
-            }
             stateButtons.push({
                 _stateRestore: state,
                 attr: {
@@ -469,7 +462,8 @@ function _stateRegen(dt, src) {
                     split: split
                 },
                 extend: 'stateRestore',
-                text: state.s.identifier
+                text: state.s.identifier,
+                popoverTitle: state.s.identifier
             });
         }
     }

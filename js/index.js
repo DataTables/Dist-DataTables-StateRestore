@@ -291,7 +291,6 @@ DataTable.ext.buttons.createState = {
         }
         if (stateRestoreOpts._createInSaved) {
             stateButtons.push('createState');
-            stateButtons.push('');
         }
         for (var _a = 0, states_3 = states; _a < states_3.length; _a++) {
             var state = states_3[_a];

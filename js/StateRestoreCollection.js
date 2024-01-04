@@ -242,7 +242,15 @@ var StateRestoreCollection = /** @class */ (function () {
                 // We don't want to extend, but instead AND all properties of the saveState option
                 for (var _i = 0, _a = Object.keys(toggles.saveState); _i < _a.length; _i++) {
                     var key = _a[_i];
-                    if (!toggles.saveState[key]) {
+                    if (typeof toggles.saveState[key] === 'object') {
+                        for (var _b = 0, _c = Object.keys(toggles.saveState[key]); _b < _c.length; _b++) {
+                            var nestedKey = _c[_b];
+                            if (!toggles.saveState[key][nestedKey]) {
+                                opts[key][nestedKey] = false;
+                            }
+                        }
+                    }
+                    else if (!toggles.saveState[key]) {
                         opts[key] = false;
                     }
                 }
@@ -733,19 +741,19 @@ var StateRestoreCollection = /** @class */ (function () {
         creationButton.on('click', function () {
             // Get the values of the checkBoxes
             var saveState = {
-                colReorder: _this.dom.colReorderToggle.children('input').is(':checked'),
+                colReorder: _this.dom.colReorderToggle.find('input').is(':checked'),
                 columns: {
-                    search: _this.dom.columnsSearchToggle.children('input').is(':checked'),
-                    visible: _this.dom.columnsVisibleToggle.children('input').is(':checked')
+                    search: _this.dom.columnsSearchToggle.find('input').is(':checked'),
+                    visible: _this.dom.columnsVisibleToggle.find('input').is(':checked')
                 },
-                length: _this.dom.lengthToggle.children('input').is(':checked'),
-                order: _this.dom.orderToggle.children('input').is(':checked'),
-                paging: _this.dom.pagingToggle.children('input').is(':checked'),
-                scroller: _this.dom.scrollerToggle.children('input').is(':checked'),
-                search: _this.dom.searchToggle.children('input').is(':checked'),
-                searchBuilder: _this.dom.searchBuilderToggle.children('input').is(':checked'),
-                searchPanes: _this.dom.searchPanesToggle.children('input').is(':checked'),
-                select: _this.dom.selectToggle.children('input').is(':checked')
+                length: _this.dom.lengthToggle.find('input').is(':checked'),
+                order: _this.dom.orderToggle.find('input').is(':checked'),
+                paging: _this.dom.pagingToggle.find('input').is(':checked'),
+                scroller: _this.dom.scrollerToggle.find('input').is(':checked'),
+                search: _this.dom.searchToggle.find('input').is(':checked'),
+                searchBuilder: _this.dom.searchBuilderToggle.find('input').is(':checked'),
+                searchPanes: _this.dom.searchPanesToggle.find('input').is(':checked'),
+                select: _this.dom.selectToggle.find('input').is(':checked')
             };
             // Call the buttons functionality passing in the identifier and what should be saved
             var success = buttonAction($('input.' + _this.classes.nameInput.replace(/ /g, '.')).val(), { saveState: saveState });

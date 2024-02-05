@@ -685,7 +685,7 @@ var StateRestore = /** @class */ (function () {
         });
         $(document).on('keyup', function (e) { return _this._keyupFunction(e); });
     };
-    StateRestore.version = '1.3.0';
+    StateRestore.version = '1.4.0-dev';
     StateRestore.classes = {
         background: 'dtsr-background',
         closeButton: 'dtsr-popover-close',

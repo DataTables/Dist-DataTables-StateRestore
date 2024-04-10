@@ -45,7 +45,7 @@ var StateRestore = /** @class */ (function () {
             removeContents: $('<div class="' + this.classes.confirmationText + '"><span>' +
                 this.s.dt
                     .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
-                    .replace(/%s/g, this.s.identifier) +
+                    .replace(/%s/g, StateRestore.entityEncode(this.s.identifier)) +
                 '</span></div>'),
             removeError: $('<span class="' + this.classes.modalError + '">' +
                 this.s.dt.i18n('stateRestore.removeError', this.c.i18n.removeError) +
@@ -57,7 +57,7 @@ var StateRestore = /** @class */ (function () {
                 '<label class="' + this.classes.confirmationMessage + '">' +
                 this.s.dt
                     .i18n('stateRestore.renameLabel', this.c.i18n.renameLabel)
-                    .replace(/%s/g, this.s.identifier) +
+                    .replace(/%s/g, StateRestore.entityEncode(this.s.identifier)) +
                 '</label>' +
                 '</div>'),
             renameInput: $('<input class="' + this.classes.input + '" type="text"></input>'),
@@ -524,6 +524,22 @@ var StateRestore = /** @class */ (function () {
         else if (typeof this.c.ajax === 'function' && callAjax) {
             this.c.ajax.call(this.s.dt, ajaxData, successCallback);
         }
+    };
+    /**
+     * Encode HTML entities
+     *
+     * @param d String to encode
+     * @returns Encoded string
+     * @todo When DT1 support is dropped, switch to using `DataTable.util.escapeHtml`
+     */
+    StateRestore.entityEncode = function (d) {
+        return typeof d === 'string' ?
+            d
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;') :
+            d;
     };
     /**
      * Performs a deep compare of two state objects, returning true if they match

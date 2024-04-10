@@ -98,7 +98,7 @@ var DataTable = $.fn.dataTable;
                 removeContents: $$2('<div class="' + this.classes.confirmationText + '"><span>' +
                     this.s.dt
                         .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
-                        .replace(/%s/g, this.s.identifier) +
+                        .replace(/%s/g, StateRestore.entityEncode(this.s.identifier)) +
                     '</span></div>'),
                 removeError: $$2('<span class="' + this.classes.modalError + '">' +
                     this.s.dt.i18n('stateRestore.removeError', this.c.i18n.removeError) +
@@ -110,7 +110,7 @@ var DataTable = $.fn.dataTable;
                     '<label class="' + this.classes.confirmationMessage + '">' +
                     this.s.dt
                         .i18n('stateRestore.renameLabel', this.c.i18n.renameLabel)
-                        .replace(/%s/g, this.s.identifier) +
+                        .replace(/%s/g, StateRestore.entityEncode(this.s.identifier)) +
                     '</label>' +
                     '</div>'),
                 renameInput: $$2('<input class="' + this.classes.input + '" type="text"></input>'),
@@ -577,6 +577,22 @@ var DataTable = $.fn.dataTable;
             else if (typeof this.c.ajax === 'function' && callAjax) {
                 this.c.ajax.call(this.s.dt, ajaxData, successCallback);
             }
+        };
+        /**
+         * Encode HTML entities
+         *
+         * @param d String to encode
+         * @returns Encoded string
+         * @todo When DT1 support is dropped, switch to using `DataTable.util.escapeHtml`
+         */
+        StateRestore.entityEncode = function (d) {
+            return typeof d === 'string' ?
+                d
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;') :
+                d;
         };
         /**
          * Performs a deep compare of two state objects, returning true if they match
@@ -1360,8 +1376,8 @@ var DataTable = $.fn.dataTable;
                             split: split
                         },
                         extend: 'stateRestore',
-                        text: state.s.identifier,
-                        popoverTitle: state.s.identifier
+                        text: StateRestore.entityEncode(state.s.identifier),
+                        popoverTitle: StateRestore.entityEncode(state.s.identifier)
                     });
                 }
             }
@@ -1711,8 +1727,8 @@ var DataTable = $.fn.dataTable;
             var keys = Object.keys(localStorage);
             var _loop_2 = function (key) {
                 // eslint-disable-next-line no-useless-escape
-                if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') + '$')) ||
-                    key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname.replace(/\//g, '/') +
+                if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname + '$')) ||
+                    key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname +
                         '_' + this_2.s.dt.table().node().id + '$'))) {
                     var loadedState_1 = JSON.parse(localStorage.getItem(key));
                     if (loadedState_1.stateRestore.isPreDefined ||
@@ -2159,8 +2175,8 @@ var DataTable = $.fn.dataTable;
                         split: split
                     },
                     extend: 'stateRestore',
-                    text: state.s.identifier,
-                    popoverTitle: state.s.identifier
+                    text: StateRestore.entityEncode(state.s.identifier),
+                    popoverTitle: StateRestore.entityEncode(state.s.identifier)
                 });
             }
             dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
@@ -2306,8 +2322,8 @@ var DataTable = $.fn.dataTable;
                         split: split
                     },
                     extend: 'stateRestore',
-                    text: state.s.identifier,
-                    popoverTitle: state.s.identifier
+                    text: StateRestore.entityEncode(state.s.identifier),
+                    popoverTitle: StateRestore.entityEncode(state.s.identifier)
                 });
             }
         }

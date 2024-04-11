@@ -1,4 +1,4 @@
-/*! StateRestore 1.4.0
+/*! StateRestore 1.4.1
  * © SpryMedia Ltd - datatables.net/license
  */
 
@@ -714,7 +714,7 @@ let $ = jQuery;
             });
             $$2(document).on('keyup', function (e) { return _this._keyupFunction(e); });
         };
-        StateRestore.version = '1.4.0';
+        StateRestore.version = '1.4.1';
         StateRestore.classes = {
             background: 'dtsr-background',
             closeButton: 'dtsr-popover-close',
@@ -1838,7 +1838,7 @@ let $ = jQuery;
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.4.0
+    /*! StateRestore 1.4.1
      * © SpryMedia Ltd - datatables.net/license
      */
     setJQuery$1($);

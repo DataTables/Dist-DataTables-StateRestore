@@ -549,6 +549,12 @@ var StateRestore = /** @class */ (function () {
      * @returns boolean indicating if the objects match
      */
     StateRestore.prototype._deepCompare = function (state1, state2) {
+        if (state1 === null && state2 === null) {
+            return true;
+        }
+        else if (state1 === null || state2 === null) {
+            return false;
+        }
         // Put keys and states into arrays as this makes the later code easier to work
         var states = [state1, state2];
         var keys = [Object.keys(state1).sort(), Object.keys(state2).sort()];

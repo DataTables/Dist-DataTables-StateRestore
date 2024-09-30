@@ -529,13 +529,6 @@ var DataTable = $.fn.dataTable;
                     }
                 }
             }
-            // If the state is predefined there is no need to save it over ajax or to local storage
-            if (this.s.isPreDefined) {
-                if (passedSuccessCallback) {
-                    passedSuccessCallback.call(this);
-                }
-                return;
-            }
             var ajaxData = {
                 action: 'save',
                 stateRestore: (_a = {},
@@ -1043,6 +1036,7 @@ var DataTable = $.fn.dataTable;
                 ajaxFunction = function () {
                     $$1.ajax({
                         data: ajaxData,
+                        dataType: 'json',
                         success: function (data) {
                             _this._addPreDefined(data);
                         },
@@ -1552,6 +1546,7 @@ var DataTable = $.fn.dataTable;
             });
             // Append all of the toggles that are to be inserted
             var checkboxesEl = this.dom.checkboxInputRow
+                .css('display', togglesToInsert.length ? 'block' : 'none')
                 .appendTo(this.dom.creationForm)
                 .find('div.dtsr-input')
                 .empty();

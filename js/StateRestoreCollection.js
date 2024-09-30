@@ -180,6 +180,7 @@ var StateRestoreCollection = /** @class */ (function () {
             ajaxFunction = function () {
                 $.ajax({
                     data: ajaxData,
+                    dataType: 'json',
                     success: function (data) {
                         _this._addPreDefined(data);
                     },
@@ -689,6 +690,7 @@ var StateRestoreCollection = /** @class */ (function () {
         });
         // Append all of the toggles that are to be inserted
         var checkboxesEl = this.dom.checkboxInputRow
+            .css('display', togglesToInsert.length ? 'block' : 'none')
             .appendTo(this.dom.creationForm)
             .find('div.dtsr-input')
             .empty();

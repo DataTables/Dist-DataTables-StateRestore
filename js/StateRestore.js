@@ -476,13 +476,6 @@ var StateRestore = /** @class */ (function () {
                 }
             }
         }
-        // If the state is predefined there is no need to save it over ajax or to local storage
-        if (this.s.isPreDefined) {
-            if (passedSuccessCallback) {
-                passedSuccessCallback.call(this);
-            }
-            return;
-        }
         var ajaxData = {
             action: 'save',
             stateRestore: (_a = {},

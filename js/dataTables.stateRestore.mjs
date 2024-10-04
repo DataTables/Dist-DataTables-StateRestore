@@ -39,7 +39,7 @@ let $ = jQuery;
                 dt: table,
                 identifier: identifier,
                 isPreDefined: isPreDefined,
-                savedState: null,
+                savedState: state,
                 tableId: state && state.stateRestore ? state.stateRestore.tableId : undefined
             };
             this.dom = {
@@ -763,13 +763,13 @@ let $ = jQuery;
                 duplicateError: 'A state with this name already exists.',
                 emptyError: 'Name cannot be empty.',
                 emptyStates: 'No saved states',
-                removeConfirm: 'Are you sure you want to remove %s?',
+                removeConfirm: 'Are you sure you want to remove "%s"?',
                 removeError: 'Failed to remove state.',
                 removeJoiner: ' and ',
                 removeSubmit: 'Remove',
                 removeTitle: 'Remove State',
                 renameButton: 'Rename',
-                renameLabel: 'New Name for %s:',
+                renameLabel: 'New Name for "%s":',
                 renameTitle: 'Rename State'
             },
             modalCloseButton: true,
@@ -810,7 +810,9 @@ let $ = jQuery;
                 searchBuilder: false,
                 searchPanes: false,
                 select: false
-            }
+            },
+            createButton: null,
+            createState: null
         };
         return StateRestore;
     }());
@@ -1244,10 +1246,18 @@ let $ = jQuery;
                     that._collectionRebuild();
                 };
                 var loadedState = preDefined[state];
-                var newState = new StateRestore(this_1.s.dt, $$1.extend(true, {}, this_1.c, loadedState.c !== undefined ?
-                    { saveState: loadedState.c.saveState } :
-                    undefined, true), state, loadedState, true, successCallback);
-                newState.s.savedState = loadedState;
+                var stateConfig = $$1.extend(true, {}, this_1.c, loadedState.c !== undefined ?
+                    {
+                        saveState: loadedState.c.saveState,
+                        remove: loadedState.c.remove,
+                        rename: loadedState.c.rename,
+                        save: loadedState.c.save
+                    } :
+                    undefined, true);
+                if (this_1.c.createState) {
+                    this_1.c.createState(stateConfig, loadedState);
+                }
+                var newState = new StateRestore(this_1.s.dt, stateConfig, state, loadedState, true, successCallback);
                 $$1(this_1.s.dt.table().node()).on('dtsr-modal-inserted', function () {
                     newState.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState.s.identifier); });
                     newState.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
@@ -1333,7 +1343,7 @@ let $ = jQuery;
                     if (split.includes('removeState') && (!this.c.remove || !state.c.remove)) {
                         split.splice(split.indexOf('removeState'), 1);
                     }
-                    stateButtons.push({
+                    var buttonConfig = {
                         _stateRestore: state,
                         attr: {
                             title: state.s.identifier
@@ -1344,7 +1354,11 @@ let $ = jQuery;
                         extend: 'stateRestore',
                         text: StateRestore.entityEncode(state.s.identifier),
                         popoverTitle: StateRestore.entityEncode(state.s.identifier)
-                    });
+                    };
+                    if (this.c.createButton) {
+                        this.c.createButton(buttonConfig, state.s.savedState);
+                    }
+                    stateButtons.push(buttonConfig);
                 }
             }
             button.collectionRebuild(stateButtons);
@@ -1840,7 +1854,9 @@ let $ = jQuery;
                 searchBuilder: false,
                 searchPanes: false,
                 select: false
-            }
+            },
+            createButton: null,
+            createState: null
         };
         return StateRestoreCollection;
     }());
@@ -2107,8 +2123,9 @@ let $ = jQuery;
                         0;
             });
             var button = dt.button('SaveStateRestore:name');
-            var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
-                button[0].inst.c.buttons[0].buttons :
+            var buttonIndex = parseInt(button.index());
+            var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[buttonIndex].buttons !== undefined ?
+                button[0].inst.c.buttons[buttonIndex].buttons :
                 [];
             // remove any states from the previous rebuild - if they are still there they will be added later
             for (var i = 0; i < stateButtons.length; i++) {

@@ -428,10 +428,18 @@ var StateRestoreCollection = /** @class */ (function () {
                 that._collectionRebuild();
             };
             var loadedState = preDefined[state];
-            var newState = new StateRestore(this_1.s.dt, $.extend(true, {}, this_1.c, loadedState.c !== undefined ?
-                { saveState: loadedState.c.saveState } :
-                undefined, true), state, loadedState, true, successCallback);
-            newState.s.savedState = loadedState;
+            var stateConfig = $.extend(true, {}, this_1.c, loadedState.c !== undefined ?
+                {
+                    saveState: loadedState.c.saveState,
+                    remove: loadedState.c.remove,
+                    rename: loadedState.c.rename,
+                    save: loadedState.c.save
+                } :
+                undefined, true);
+            if (this_1.c.createState) {
+                this_1.c.createState(stateConfig, loadedState);
+            }
+            var newState = new StateRestore(this_1.s.dt, stateConfig, state, loadedState, true, successCallback);
             $(this_1.s.dt.table().node()).on('dtsr-modal-inserted', function () {
                 newState.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState.s.identifier); });
                 newState.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
@@ -517,7 +525,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 if (split.includes('removeState') && (!this.c.remove || !state.c.remove)) {
                     split.splice(split.indexOf('removeState'), 1);
                 }
-                stateButtons.push({
+                var buttonConfig = {
                     _stateRestore: state,
                     attr: {
                         title: state.s.identifier
@@ -528,7 +536,11 @@ var StateRestoreCollection = /** @class */ (function () {
                     extend: 'stateRestore',
                     text: StateRestore.entityEncode(state.s.identifier),
                     popoverTitle: StateRestore.entityEncode(state.s.identifier)
-                });
+                };
+                if (this.c.createButton) {
+                    this.c.createButton(buttonConfig, state.s.savedState);
+                }
+                stateButtons.push(buttonConfig);
             }
         }
         button.collectionRebuild(stateButtons);
@@ -1024,7 +1036,9 @@ var StateRestoreCollection = /** @class */ (function () {
             searchBuilder: false,
             searchPanes: false,
             select: false
-        }
+        },
+        createButton: null,
+        createState: null
     };
     return StateRestoreCollection;
 }());

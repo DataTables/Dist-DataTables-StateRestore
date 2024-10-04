@@ -26,7 +26,7 @@ var StateRestore = /** @class */ (function () {
             dt: table,
             identifier: identifier,
             isPreDefined: isPreDefined,
-            savedState: null,
+            savedState: state,
             tableId: state && state.stateRestore ? state.stateRestore.tableId : undefined
         };
         this.dom = {
@@ -750,13 +750,13 @@ var StateRestore = /** @class */ (function () {
             duplicateError: 'A state with this name already exists.',
             emptyError: 'Name cannot be empty.',
             emptyStates: 'No saved states',
-            removeConfirm: 'Are you sure you want to remove %s?',
+            removeConfirm: 'Are you sure you want to remove "%s"?',
             removeError: 'Failed to remove state.',
             removeJoiner: ' and ',
             removeSubmit: 'Remove',
             removeTitle: 'Remove State',
             renameButton: 'Rename',
-            renameLabel: 'New Name for %s:',
+            renameLabel: 'New Name for "%s":',
             renameTitle: 'Rename State'
         },
         modalCloseButton: true,
@@ -797,7 +797,9 @@ var StateRestore = /** @class */ (function () {
             searchBuilder: false,
             searchPanes: false,
             select: false
-        }
+        },
+        createButton: null,
+        createState: null
     };
     return StateRestore;
 }());

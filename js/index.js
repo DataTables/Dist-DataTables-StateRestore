@@ -280,8 +280,9 @@ DataTable.ext.buttons.createState = {
                     0;
         });
         var button = dt.button('SaveStateRestore:name');
-        var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[0].buttons !== undefined ?
-            button[0].inst.c.buttons[0].buttons :
+        var buttonIndex = parseInt(button.index());
+        var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[buttonIndex].buttons !== undefined ?
+            button[0].inst.c.buttons[buttonIndex].buttons :
             [];
         // remove any states from the previous rebuild - if they are still there they will be added later
         for (var i = 0; i < stateButtons.length; i++) {

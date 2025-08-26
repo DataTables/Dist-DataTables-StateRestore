@@ -1707,10 +1707,10 @@ let $ = jQuery;
             var _this = this;
             var keys = Object.keys(localStorage);
             var _loop_2 = function (key) {
-                // eslint-disable-next-line no-useless-escape
-                if (key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname + '$')) ||
-                    key.match(new RegExp('^DataTables_stateRestore_.*_' + location.pathname +
-                        '_' + this_2.s.dt.table().node().id + '$'))) {
+                // Check if the key belongs to this page / table
+                if (key.startsWith('DataTables_stateRestore_') &&
+                    (key.endsWith(location.pathname) ||
+                        key.endsWith(location.pathname + '_' + this_2.s.dt.table().node().id))) {
                     var loadedState_1 = JSON.parse(localStorage.getItem(key));
                     if (loadedState_1.stateRestore.isPreDefined ||
                         (loadedState_1.stateRestore.tableId &&

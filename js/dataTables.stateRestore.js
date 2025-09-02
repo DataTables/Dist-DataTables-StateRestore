@@ -1285,7 +1285,7 @@ var DataTable = $.fn.dataTable;
                     that.s.states.push(this);
                     that._collectionRebuild();
                 };
-                var loadedState = preDefined[state];
+                var loadedState = this_1._fixTypes(preDefined[state]);
                 var stateConfig = $$1.extend(true, {}, this_1.c, loadedState.c !== undefined ?
                     {
                         saveState: loadedState.c.saveState,
@@ -1654,6 +1654,28 @@ var DataTable = $.fn.dataTable;
             $$1(document).on('keyup', keyupFunction);
             // Need to save the state before the focus is lost when the modal is interacted with
             this.s.dt.state.save();
+        };
+        /**
+         * Make sure the data for a state contains the expected data types
+         *
+         * @param state State
+         */
+        StateRestoreCollection.prototype._fixTypes = function (state) {
+            var fix = function (d, prop) {
+                var val = d[prop];
+                if (val !== undefined) {
+                    d[prop] = typeof val === 'number' ? val : parseInt(val);
+                }
+            };
+            fix(state, 'start');
+            fix(state, 'length');
+            fix(state, 'time');
+            if (state.order) {
+                for (var i = 0; i < state.order.length; i++) {
+                    fix(state.order[i], 0);
+                }
+            }
+            return state;
         };
         /**
          * This callback is called when a state is removed.

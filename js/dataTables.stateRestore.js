@@ -1661,18 +1661,48 @@ var DataTable = $.fn.dataTable;
          * @param state State
          */
         StateRestoreCollection.prototype._fixTypes = function (state) {
-            var fix = function (d, prop) {
+            var i;
+            var fixNum = function (d, prop) {
                 var val = d[prop];
                 if (val !== undefined) {
                     d[prop] = typeof val === 'number' ? val : parseInt(val);
                 }
             };
-            fix(state, 'start');
-            fix(state, 'length');
-            fix(state, 'time');
+            var fixBool = function (d, prop) {
+                var val = d[prop];
+                if (val !== undefined) {
+                    d[prop] = typeof val !== 'string'
+                        ? val
+                        : val === 'true'
+                            ? true
+                            : false;
+                }
+            };
+            fixNum(state, 'start');
+            fixNum(state, 'length');
+            fixNum(state, 'time');
             if (state.order) {
-                for (var i = 0; i < state.order.length; i++) {
-                    fix(state.order[i], 0);
+                for (i = 0; i < state.order.length; i++) {
+                    fixNum(state.order[i], 0);
+                }
+            }
+            if (state.search) {
+                fixBool(state.search, 'caseInsensitive');
+                fixBool(state.search, 'regex');
+                fixBool(state.search, 'smart');
+                fixBool(state.search, 'visible');
+            }
+            if (state.columns) {
+                for (i = 0; i < state.columns.length; i++) {
+                    fixBool(state.columns[i], 'caseInsensitive');
+                    fixBool(state.columns[i], 'regex');
+                    fixBool(state.columns[i], 'smart');
+                    fixBool(state.columns[i], 'visible');
+                }
+            }
+            if (state.colReorder) {
+                for (i = 0; i < state.colReorder.length; i++) {
+                    fixNum(state.colReorder, i);
                 }
             }
             return state;

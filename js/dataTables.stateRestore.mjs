@@ -1651,6 +1651,7 @@ let $ = jQuery;
                 fixBool(state.search, 'regex');
                 fixBool(state.search, 'smart');
                 fixBool(state.search, 'visible');
+                fixBool(state.search, 'return');
             }
             if (state.columns) {
                 for (i = 0; i < state.columns.length; i++) {

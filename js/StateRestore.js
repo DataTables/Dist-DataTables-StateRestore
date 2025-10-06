@@ -65,8 +65,9 @@ var StateRestore = /** @class */ (function () {
                 this.s.dt.i18n('stateRestore.renameTitle', this.c.i18n.renameTitle) +
                 '</h2>')
         };
-        // When a StateRestore instance is created the current state of the table should also be saved.
-        this.save(state, successCallback);
+        // When a StateRestore instance is created the current state of the
+        // table should also be saved.
+        this.save(state, successCallback, !isPreDefined);
     }
     /**
      * Removes a state from storage and then triggers the dtsr-remove event
@@ -516,6 +517,9 @@ var StateRestore = /** @class */ (function () {
         }
         else if (typeof this.c.ajax === 'function' && callAjax) {
             this.c.ajax.call(this.s.dt, ajaxData, successCallback);
+        }
+        else if (!callAjax) {
+            successCallback();
         }
     };
     /**

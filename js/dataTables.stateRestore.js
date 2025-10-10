@@ -1,4 +1,4 @@
-/*! StateRestore 1.4.2
+/*! StateRestore 1.4.3
  * © SpryMedia Ltd - datatables.net/license
  */
 
@@ -1958,7 +1958,7 @@ var DataTable = $.fn.dataTable;
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.4.2
+    /*! StateRestore 1.4.3
      * © SpryMedia Ltd - datatables.net/license
      */
     setJQuery$1($);

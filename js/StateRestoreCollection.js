@@ -121,9 +121,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 '</div>'),
             removeContents: $('<div class="' + this.classes.confirmationText + '"><span></span></div>'),
             removeTitle: $('<div class="' + this.classes.creationText + '">' +
-                '<h2 class="' + this.classes.creationTitle + '">' +
-                this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle) +
-                '</h2>' +
+                '<h2 class="' + this.classes.creationTitle + '"></h2>' +
                 '</div>'),
             scrollerToggle: $('<div class="' + this.classes.checkLabel + '">' +
                 '<input type="checkbox" class="' +
@@ -301,6 +299,7 @@ var StateRestoreCollection = /** @class */ (function () {
                 this.s.dt.i18n('stateRestore.removeJoiner', this.c.i18n.removeJoiner) +
                 ids.slice(-1);
         }
+        $(this.dom.removeTitle).find('h2').html(this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle, ids.length));
         $(this.dom.removeContents.children('span')).html(this.s.dt
             .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
             .replace(/%s/g, replacementString));
@@ -899,6 +898,10 @@ var StateRestoreCollection = /** @class */ (function () {
             confirmationButton.focus();
         }
         var background = $('div.' + this.classes.background.replace(/ /g, '.'));
+        if (this.c.modalCloseButton) {
+            this.dom.confirmation.append(this.dom.closeButton);
+            this.dom.closeButton.on('click', function () { return background.click(); });
+        }
         var keyupFunction = function (e) {
             // If enter same action as pressing the button
             if (e.key === 'Enter') {
@@ -1045,7 +1048,10 @@ var StateRestoreCollection = /** @class */ (function () {
             removeError: 'Failed to remove state.',
             removeJoiner: ' and ',
             removeSubmit: 'Remove',
-            removeTitle: 'Remove State',
+            removeTitle: {
+                1: 'Remove State',
+                _: 'Remove States'
+            },
             renameButton: 'Rename',
             renameLabel: 'New Name for %s:',
             renameTitle: 'Rename State'

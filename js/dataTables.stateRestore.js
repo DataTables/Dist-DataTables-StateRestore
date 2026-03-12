@@ -1,4 +1,4 @@
-/*! StateRestore 1.4.3
+/*! StateRestore 1.5.0-dev
  * © SpryMedia Ltd - datatables.net/license
  */
 
@@ -104,7 +104,7 @@ var DataTable = $.fn.dataTable;
                     this.s.dt.i18n('stateRestore.removeError', this.c.i18n.removeError) +
                     '</span>'),
                 removeTitle: $$2('<h2 class="' + this.classes.confirmationTitle + '">' +
-                    this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle) +
+                    this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle, 1) +
                     '</h2>'),
                 renameContents: $$2('<div class="' + this.classes.confirmationText + ' ' + this.classes.renameModal + '">' +
                     '<label class="' + this.classes.confirmationMessage + '">' +
@@ -763,7 +763,7 @@ var DataTable = $.fn.dataTable;
             });
             $$2(document).on('keyup', function (e) { return _this._keyupFunction(e); });
         };
-        StateRestore.version = '1.4.3';
+        StateRestore.version = '1.5.0-dev';
         StateRestore.classes = {
             background: 'dtsr-background',
             closeButton: 'dtsr-popover-close',
@@ -983,9 +983,7 @@ var DataTable = $.fn.dataTable;
                     '</div>'),
                 removeContents: $$1('<div class="' + this.classes.confirmationText + '"><span></span></div>'),
                 removeTitle: $$1('<div class="' + this.classes.creationText + '">' +
-                    '<h2 class="' + this.classes.creationTitle + '">' +
-                    this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle) +
-                    '</h2>' +
+                    '<h2 class="' + this.classes.creationTitle + '"></h2>' +
                     '</div>'),
                 scrollerToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
                     '<input type="checkbox" class="' +
@@ -1163,6 +1161,7 @@ var DataTable = $.fn.dataTable;
                     this.s.dt.i18n('stateRestore.removeJoiner', this.c.i18n.removeJoiner) +
                     ids.slice(-1);
             }
+            $$1(this.dom.removeTitle).find('h2').html(this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle, ids.length));
             $$1(this.dom.removeContents.children('span')).html(this.s.dt
                 .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
                 .replace(/%s/g, replacementString));
@@ -1761,6 +1760,10 @@ var DataTable = $.fn.dataTable;
                 confirmationButton.focus();
             }
             var background = $$1('div.' + this.classes.background.replace(/ /g, '.'));
+            if (this.c.modalCloseButton) {
+                this.dom.confirmation.append(this.dom.closeButton);
+                this.dom.closeButton.on('click', function () { return background.click(); });
+            }
             var keyupFunction = function (e) {
                 // If enter same action as pressing the button
                 if (e.key === 'Enter') {
@@ -1907,7 +1910,10 @@ var DataTable = $.fn.dataTable;
                 removeError: 'Failed to remove state.',
                 removeJoiner: ' and ',
                 removeSubmit: 'Remove',
-                removeTitle: 'Remove State',
+                removeTitle: {
+                    1: 'Remove State',
+                    _: 'Remove States'
+                },
                 renameButton: 'Rename',
                 renameLabel: 'New Name for %s:',
                 renameTitle: 'Rename State'
@@ -1958,7 +1964,7 @@ var DataTable = $.fn.dataTable;
         return StateRestoreCollection;
     }());
 
-    /*! StateRestore 1.4.3
+    /*! StateRestore 1.5.0-dev
      * © SpryMedia Ltd - datatables.net/license
      */
     setJQuery$1($);
@@ -2295,11 +2301,12 @@ var DataTable = $.fn.dataTable;
         }
     };
     DataTable.ext.buttons.removeAllStates = {
-        action: function (e, dt, node) {
-            dt.stateRestore.states().remove(true);
+        action: function (e, dt, node, config) {
+            dt.stateRestore.states().remove(!config.confirmModal);
             node.blur();
         },
         className: 'dt-button dtsr-removeAllStates',
+        confirmModal: true,
         init: function (dt, node) {
             if (!dt.settings()[0]._stateRestore || dt.stateRestore.states().length === 0) {
                 $(node).addClass('disabled');

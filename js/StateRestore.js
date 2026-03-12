@@ -51,7 +51,7 @@ var StateRestore = /** @class */ (function () {
                 this.s.dt.i18n('stateRestore.removeError', this.c.i18n.removeError) +
                 '</span>'),
             removeTitle: $('<h2 class="' + this.classes.confirmationTitle + '">' +
-                this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle) +
+                this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle, 1) +
                 '</h2>'),
             renameContents: $('<div class="' + this.classes.confirmationText + ' ' + this.classes.renameModal + '">' +
                 '<label class="' + this.classes.confirmationMessage + '">' +
@@ -710,7 +710,7 @@ var StateRestore = /** @class */ (function () {
         });
         $(document).on('keyup', function (e) { return _this._keyupFunction(e); });
     };
-    StateRestore.version = '1.4.3';
+    StateRestore.version = '1.5.0-dev';
     StateRestore.classes = {
         background: 'dtsr-background',
         closeButton: 'dtsr-popover-close',

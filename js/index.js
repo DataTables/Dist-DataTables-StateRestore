@@ -1,10 +1,10 @@
-/*! StateRestore 1.4.3
+/*! StateRestore 1.5.0-dev
  * © SpryMedia Ltd - datatables.net/license
  */
 /**
  * @summary     StateRestore
  * @description StateRestore extension for DataTables
- * @version     1.4.3
+ * @version     1.5.0-dev
  * @author      SpryMedia Ltd
  * @contact     datatables.net
  * @copyright   Copyright SpryMedia Ltd.
@@ -355,11 +355,12 @@ DataTable.ext.buttons.removeState = {
     }
 };
 DataTable.ext.buttons.removeAllStates = {
-    action: function (e, dt, node) {
-        dt.stateRestore.states().remove(true);
+    action: function (e, dt, node, config) {
+        dt.stateRestore.states().remove(!config.confirmModal);
         node.blur();
     },
     className: 'dt-button dtsr-removeAllStates',
+    confirmModal: true,
     init: function (dt, node) {
         if (!dt.settings()[0]._stateRestore || dt.stateRestore.states().length === 0) {
             $(node).addClass('disabled');

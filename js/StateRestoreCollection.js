@@ -784,6 +784,9 @@ var StateRestoreCollection = /** @class */ (function () {
      */
     StateRestoreCollection.prototype._fixTypes = function (state) {
         var i;
+        if (typeof state === 'string') {
+            state = JSON.parse(state);
+        }
         var fixNum = function (d, prop) {
             var val = d[prop];
             if (val !== undefined) {

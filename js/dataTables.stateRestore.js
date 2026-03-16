@@ -81,6 +81,11 @@ var DataTable = $.fn.dataTable;
         if (base.submitAs === 'json') {
             base.data = JSON.stringify(base.data);
         }
+        else if (DataTable.StateRestore.ajaxJsonState) {
+            $.each(base.data.stateRestore, function (key, value) {
+                base.data.stateRestore[key] = JSON.stringify(base.data.stateRestore[key]);
+            });
+        }
         $.ajax(base);
     }
 
@@ -1638,6 +1643,9 @@ var DataTable = $.fn.dataTable;
          */
         StateRestoreCollection.prototype._fixTypes = function (state) {
             var i;
+            if (typeof state === 'string') {
+                state = JSON.parse(state);
+            }
             var fixNum = function (d, prop) {
                 var val = d[prop];
                 if (val !== undefined) {

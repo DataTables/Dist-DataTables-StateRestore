@@ -1,5 +1,6 @@
 var $;
 var dataTable;
+import { ajax } from './util';
 export function setJQuery(jq) {
     $ = jq;
     dataTable = jq.fn.dataTable;
@@ -116,23 +117,9 @@ var StateRestore = /** @class */ (function () {
         }
         // Ajax property has to be a string, not just true
         // Also only want to save if the table has been initialised and the states have been loaded in
-        else if (typeof this.c.ajax === 'string' && this.s.dt.settings()[0]._bInitComplete) {
+        else if (this.s.dt.settings()[0]._bInitComplete) {
             removeFunction = function () {
-                $.ajax({
-                    data: ajaxData,
-                    success: successCallback,
-                    type: 'POST',
-                    url: _this.c.ajax
-                });
-                return true;
-            };
-        }
-        else if (typeof this.c.ajax === 'function') {
-            removeFunction = function () {
-                if (typeof _this.c.ajax === 'function') {
-                    _this.c.ajax.call(_this.s.dt, ajaxData, successCallback);
-                }
-                return true;
+                ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
             };
         }
         // If the modal is to be skipped then remove straight away
@@ -335,16 +322,8 @@ var StateRestore = /** @class */ (function () {
                     return false;
                 }
             }
-            else if (typeof _this.c.ajax === 'string' && _this.s.dt.settings()[0]._bInitComplete) {
-                $.ajax({
-                    data: ajaxData,
-                    success: successCallback,
-                    type: 'POST',
-                    url: _this.c.ajax
-                });
-            }
-            else if (typeof _this.c.ajax === 'function') {
-                _this.c.ajax.call(_this.s.dt, ajaxData, successCallback);
+            else if (_this.s.dt.settings()[0]._bInitComplete) {
+                ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
             }
             return true;
         };
@@ -495,28 +474,10 @@ var StateRestore = /** @class */ (function () {
                 (this.s.tableId ? '_' + this.s.tableId : ''), JSON.stringify(this.s.savedState));
             successCallback();
         }
-        else if (typeof this.c.ajax === 'string' && callAjax) {
-            if (this.s.dt.settings()[0]._bInitComplete) {
-                $.ajax({
-                    data: ajaxData,
-                    success: successCallback,
-                    type: 'POST',
-                    url: this.c.ajax
-                });
-            }
-            else {
-                this.s.dt.one('init', function () {
-                    $.ajax({
-                        data: ajaxData,
-                        success: successCallback,
-                        type: 'POST',
-                        url: _this.c.ajax
-                    });
-                });
-            }
-        }
-        else if (typeof this.c.ajax === 'function' && callAjax) {
-            this.c.ajax.call(this.s.dt, ajaxData, successCallback);
+        else if (callAjax) {
+            this.s.dt.ready(function () {
+                ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
+            });
         }
         else if (!callAjax) {
             successCallback();

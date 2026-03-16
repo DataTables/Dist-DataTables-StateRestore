@@ -51,6 +51,39 @@ var DataTable = $.fn.dataTable;
 (function () {
     'use strict';
 
+    /**
+     * Common Ajax handling
+     *
+     * @param dt Host DataTable
+     * @param ajax The Ajax configuration object / string
+     * @param data Data to send
+     * @param success Success callback
+     */
+    function ajax(dt, ajax, data, success) {
+        if (!ajax) {
+            return;
+        }
+        if (typeof ajax === 'function') {
+            ajax.call(dt, data, success);
+            return;
+        }
+        var base = {
+            data: data,
+            success: success,
+            type: 'POST'
+        };
+        if (typeof ajax === 'string') {
+            base.url = ajax;
+        }
+        else {
+            $.extend(true, base, ajax);
+        }
+        if (base.submitAs === 'json') {
+            base.data = JSON.stringify(base.data);
+        }
+        $.ajax(base);
+    }
+
     var $$2;
     var dataTable$1;
     function setJQuery$1(jq) {
@@ -169,23 +202,9 @@ var DataTable = $.fn.dataTable;
             }
             // Ajax property has to be a string, not just true
             // Also only want to save if the table has been initialised and the states have been loaded in
-            else if (typeof this.c.ajax === 'string' && this.s.dt.settings()[0]._bInitComplete) {
+            else if (this.s.dt.settings()[0]._bInitComplete) {
                 removeFunction = function () {
-                    $$2.ajax({
-                        data: ajaxData,
-                        success: successCallback,
-                        type: 'POST',
-                        url: _this.c.ajax
-                    });
-                    return true;
-                };
-            }
-            else if (typeof this.c.ajax === 'function') {
-                removeFunction = function () {
-                    if (typeof _this.c.ajax === 'function') {
-                        _this.c.ajax.call(_this.s.dt, ajaxData, successCallback);
-                    }
-                    return true;
+                    ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
                 };
             }
             // If the modal is to be skipped then remove straight away
@@ -388,16 +407,8 @@ var DataTable = $.fn.dataTable;
                         return false;
                     }
                 }
-                else if (typeof _this.c.ajax === 'string' && _this.s.dt.settings()[0]._bInitComplete) {
-                    $$2.ajax({
-                        data: ajaxData,
-                        success: successCallback,
-                        type: 'POST',
-                        url: _this.c.ajax
-                    });
-                }
-                else if (typeof _this.c.ajax === 'function') {
-                    _this.c.ajax.call(_this.s.dt, ajaxData, successCallback);
+                else if (_this.s.dt.settings()[0]._bInitComplete) {
+                    ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
                 }
                 return true;
             };
@@ -548,28 +559,10 @@ var DataTable = $.fn.dataTable;
                     (this.s.tableId ? '_' + this.s.tableId : ''), JSON.stringify(this.s.savedState));
                 successCallback();
             }
-            else if (typeof this.c.ajax === 'string' && callAjax) {
-                if (this.s.dt.settings()[0]._bInitComplete) {
-                    $$2.ajax({
-                        data: ajaxData,
-                        success: successCallback,
-                        type: 'POST',
-                        url: this.c.ajax
-                    });
-                }
-                else {
-                    this.s.dt.one('init', function () {
-                        $$2.ajax({
-                            data: ajaxData,
-                            success: successCallback,
-                            type: 'POST',
-                            url: _this.c.ajax
-                        });
-                    });
-                }
-            }
-            else if (typeof this.c.ajax === 'function' && callAjax) {
-                this.c.ajax.call(this.s.dt, ajaxData, successCallback);
+            else if (callAjax) {
+                this.s.dt.ready(function () {
+                    ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
+                });
             }
             else if (!callAjax) {
                 successCallback();
@@ -1023,41 +1016,21 @@ var DataTable = $.fn.dataTable;
             };
             table.settings()[0]._stateRestore = this;
             this._searchForStates();
-            // Has staterestore been used before? Is there anything to load?
+            // Has StateRestore been used before? Is there anything to load?
             this._addPreDefined(this.c.preDefined);
-            var ajaxFunction;
-            var ajaxData = {
-                action: 'load'
+            // Ajax load if required
+            var fn = function () {
+                ajax(_this.s.dt, _this.c.ajax, { action: 'load' }, function (data) {
+                    _this._addPreDefined(data);
+                });
             };
-            if (typeof this.c.ajax === 'function') {
-                ajaxFunction = function () {
-                    if (typeof _this.c.ajax === 'function') {
-                        _this.c.ajax.call(_this.s.dt, ajaxData, function (s) { return _this._addPreDefined(s); });
-                    }
-                };
+            if (this.s.dt.ready()) {
+                fn();
             }
-            else if (typeof this.c.ajax === 'string') {
-                ajaxFunction = function () {
-                    $$1.ajax({
-                        data: ajaxData,
-                        dataType: 'json',
-                        success: function (data) {
-                            _this._addPreDefined(data);
-                        },
-                        type: 'POST',
-                        url: _this.c.ajax
-                    });
-                };
-            }
-            if (typeof ajaxFunction === 'function') {
-                if (this.s.dt.settings()[0]._bInitComplete) {
-                    ajaxFunction();
-                }
-                else {
-                    this.s.dt.one('preInit.dtsr', function () {
-                        ajaxFunction();
-                    });
-                }
+            else {
+                this.s.dt.one('preInit.dtsr', function () {
+                    fn();
+                });
             }
             this.s.dt.on('destroy.dtsr', function () {
                 _this.destroy();

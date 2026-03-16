@@ -2041,7 +2041,10 @@ var DataTable = $.fn.dataTable;
                         success = tempSuccess;
                     }
                     else {
+                        // Remove from local list
                         that.splice(0, 1);
+                        // And remove from SR
+                        _this.context[0]._stateRestore._removeCallback(set.s.identifier);
                     }
                 }
                 else {

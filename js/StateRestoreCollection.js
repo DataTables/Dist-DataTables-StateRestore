@@ -213,7 +213,7 @@ var StateRestoreCollection = /** @class */ (function () {
             };
             var currState = _this.s.dt.state();
             currState.stateRestore = {
-                isPredefined: false,
+                isPreDefined: false,
                 state: id,
                 tableId: _this.s.dt.table().node().id
             };

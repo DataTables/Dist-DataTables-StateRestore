@@ -1,50 +1,58 @@
 # StateRestore for DataTables 
 
-This is the distribution package for the [StateRestore extension](https://datatables.net/extensions/staterestore) for [DataTables](https://datatables.net/). Only the core software for this library is contained in this package - to be correctly styled, a styling package for StateRestore must also be included. Please see the [npm installation documentation on the DataTables site](https://datatables.net/manual/installation#Node.js-/-NPM) for full details.
+StateRestore is a state management UI for DataTables. It allows users to create multiple table states which can be saved and then reloaded at any time. This is particularly useful for complex tables where specific views are common and the user might wish to toggle between states.
 
-The StateRestore extension for DataTables builds on the `stateSave` option within DataTable's core. This allows users to save multiple different states and reload them at any time, not just at initialisation.
+States can be saved locally, or for a more permanent part of your table's features, to a remote database via Ajax, which also provides the ability for users to share states.
+
+
+## Features
+
+StateRestore provides the following features to enhance a DataTable:
+
+* Two state management interfaces to suit your needs:
+  * Table based
+  * Dropdown list based
+* Default state for when a table is loaded
+* First class Ajax storage
+* Optional sharing of states
+* Customisation of which table settings are saved
+* Comprehensive API
+* Full support in our [server-side libraries](https://datatables.net/manual/server)
+
+And more! As with all DataTables extensions it can of course have all language strings localised, has complete documentation, and has styling integration with all of the DataTables supported styling libraries (e.g. Bootstrap, Bulma, Fomantic UI and others).
 
 
 ## Installation
 
-### Browser
+The easiest way to install any extension for for DataTables, including StateRestore, is with the [download builder](https://datatables.net/download). With the download builder, you select the styling and aspects of DataTables suite that you want, and it will generate the packages / install commands for you to use.
 
-To use DataTables with a simple `<script>` tag, rather than using this package, it is recommended that you use the [DataTables download builder](//datatables.net/download) which can create CDN or locally hosted packages for you, will all dependencies satisfied.
+The download builder includes options for direct loading with `script` and `link` tags, details for using a package manager such as [npm](https://www.npmjs.com/) and [NuGet](https://www.nuget.org/), or a download option if you wish to have the files locally.
 
-### npm
 
-For installation via npm, yarn and other similar package managers, install this package with your package manager - e.g.:
+## Basic Usage
 
-```
-npm install datatables.net
-npm install datatables.net-staterestore
-```
+In its most simple case, you can enable StateRestore by simply setting `stateRestore: true` as an option in the DataTables initialisation.
 
-Then, to load and initialise DataTables and StateRestore in your code use:
-
-```
-import DataTable from 'datatables.net';
-import 'datatables.net-staterestore'
-
-new DataTable('#myTable', {
-    // initialisation options
+```js
+new DataTable('#example', {
+	layout: {
+		topStart: {
+			buttons: ['stateCreate', 'statesList', 'pageLength']
+		}
+	},
+	stateRestore: true
 });
 ```
 
+Note that you will typically use one of `statesList` or `statesTable` in the `buttons` array with the [Buttons extension](https://datatables.net/extensions/buttons/), as these define the UI that the end user will interact with. `stateCreate` is another common StateRestore button to use at the top level. This and the list view are used in the example above.
 
-## Documentation
 
-Full documentation and examples for StateRestore can be found [on the DataTables website](https://datatables.net/extensions/staterestore).
+## Documentation / Support
 
-## Bug / Support
-
-Support for DataTables is available through the [DataTables forums](//datatables.net/forums) and [commercial support options](//datatables.net/support) are available.
-
-### Contributing
-
-If you are thinking of contributing code to DataTables, first of all, thank you! All fixes, patches and enhancements to DataTables are very warmly welcomed. This repository is a distribution repo, so patches and issues sent to this repo will not be accepted. Instead, please direct pull requests to the [DataTables/StateRestore](http://github.com/DataTables/StateRestore). For issues / bugs, please direct your questions to the [DataTables forums](//datatables.net/forums).
+* Full installation, usage and documentation is [in the manual](https://datatables.net/extensions/staterestore/)
+* [DataTables support forums](http://datatables.net/forums)
 
 
 ## License
 
-This software is released under the [MIT license](//datatables.net/license). You are free to use, modify and distribute this software, but all copyright information must remain.
+This software is released under the [DataTables Plus License](https://datatables.net/license/plus). To use the software a license key must be applied - see [DataTables Plus](https://datatables.net/plus).

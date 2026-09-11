@@ -4,7 +4,7 @@
     "main": "js/dataTables.stateRestore.js",
     "module": "js/dataTables.stateRestore.mjs",
     "types": "./types/types.d.ts",
-    "version": "1.4.3",
+    "version": "2.0.0",
     "files": [
         "js/**/*.js",
         "js/**/*.mjs",
@@ -16,25 +16,13 @@
         "state",
         "reload",
         "Datatables",
-        "jQuery",
         "table",
         "filter",
         "sort"
     ],
     "dependencies": {
-        "datatables.net": "1.11 - 2",
-        "jquery": ">=1.7"
+        "datatables.net": "^3"
     },
-    "moduleType": [
-        "globals",
-        "amd",
-        "node"
-    ],
-    "ignore": [
-        "composer.json",
-        "datatables.json",
-        "package.json"
-    ],
     "author": {
         "name": "SpryMedia Ltd",
         "url": "http://datatables.net"
@@ -44,6 +32,6 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/DataTables/Dist-DataTables-StateRestore.git"
+        "url": "git+https://github.com/DataTables/StateRestore.git"
     }
 }

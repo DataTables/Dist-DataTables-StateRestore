@@ -10,7 +10,7 @@
         <license type="expression">MIT</license>
         <tags>StateRestore  stateSave  state reload  Datatables table</tags>
         <dependencies>
-            <dependency id="datatables.net" version="^3"/>
+            <dependency id="datatables.net" version="[3.0.0, 4.0.0)"/>
         </dependencies>
         <contentFiles>
             <files include="**/*" buildAction="Content"/>

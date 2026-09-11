@@ -1,4 +1,4 @@
-/*! StateRestore 2.0.0-dev for DataTables
+/*! StateRestore 2.0.0 for DataTables
  * Copyright (c) SpryMedia Ltd - datatables.net/license/plus
  *
  * SVG icons: ISC License
@@ -1199,7 +1199,7 @@ States.defaults = {
     predefined: []
 };
 States.manipulators = stateManipulators;
-States.version = '2.0.0-dev';
+States.version = '2.0.0';
 
 // The SVG for many of these icons are from Lucide ( https://lucide.dev ), which are available
 // under the ISC License. There are a number of custom icons as well. These are optimised through

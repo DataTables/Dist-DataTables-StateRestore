@@ -1,2393 +1,1719 @@
-/*! StateRestore 1.5.0-dev
- * © SpryMedia Ltd - datatables.net/license
+/*! StateRestore 2.0.0-dev for DataTables
+ * Copyright (c) SpryMedia Ltd - datatables.net/license/plus
+ *
+ * SVG icons: ISC License
+ * Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT).
+ * All other copyright (c) for Lucide are held by Lucide Contributors 2022.
  */
-(function () {
-    'use strict';
 
-    /**
-     * Common Ajax handling
-     *
-     * @param dt Host DataTable
-     * @param ajax The Ajax configuration object / string
-     * @param data Data to send
-     * @param success Success callback
-     */
-    function ajax(dt, ajax, data, success) {
-        if (!ajax) {
-            return;
-        }
-        if (typeof ajax === 'function') {
-            ajax.call(dt, data, success);
-            return;
-        }
-        var base = {
-            data: data,
-            success: success,
-            type: 'POST'
-        };
-        if (typeof ajax === 'string') {
-            base.url = ajax;
-        }
-        else {
-            $.extend(true, base, ajax);
-        }
-        if (base.submitAs === 'json') {
-            base.data = JSON.stringify(base.data);
-            if (!base.contentType) {
-                base.contentType = 'application/json; charset=utf-8';
-            }
-        }
-        else if (DataTable.StateRestore.ajaxJsonState) {
-            $.each(base.data.stateRestore, function (key, value) {
-                base.data.stateRestore[key] = JSON.stringify(base.data.stateRestore[key]);
-            });
-        }
-        $.ajax(base);
-    }
+(function(factory){
+	if (typeof define === 'function' && define.amd) {
+		// AMD
+		define(['datatables.net'], function (dt) {
+			return factory(window, document, dt);
+		});
+	}
+	else if (typeof exports === 'object') {
+		// CommonJS
+		var cjsRequires = function (root) {
+			if (! root.DataTable) {
+				require('datatables.net')(root);
+			}
+		};
 
-    var $$2;
-    var dataTable$1;
-    function setJQuery$1(jq) {
-        $$2 = jq;
-        dataTable$1 = jq.fn.dataTable;
-    }
-    var StateRestore = /** @class */ (function () {
-        function StateRestore(settings, opts, identifier, state, isPreDefined, successCallback) {
-            if (state === void 0) { state = undefined; }
-            if (isPreDefined === void 0) { isPreDefined = false; }
-            if (successCallback === void 0) { successCallback = function () { return null; }; }
-            // Check that the required version of DataTables is included
-            if (!dataTable$1 || !dataTable$1.versionCheck || !dataTable$1.versionCheck('1.10.0')) {
-                throw new Error('StateRestore requires DataTables 1.10 or newer');
-            }
-            // Check that Select is included
-            // eslint-disable-next-line no-extra-parens
-            if (!dataTable$1.Buttons) {
-                throw new Error('StateRestore requires Buttons');
-            }
-            var table = new dataTable$1.Api(settings);
-            this.classes = $$2.extend(true, {}, StateRestore.classes);
-            // Get options from user
-            this.c = $$2.extend(true, {}, StateRestore.defaults, opts);
-            this.s = {
-                dt: table,
-                identifier: identifier,
-                isPreDefined: isPreDefined,
-                savedState: state,
-                tableId: state && state.stateRestore ? state.stateRestore.tableId : undefined
-            };
-            this.dom = {
-                background: $$2('<div class="' + this.classes.background + '"/>'),
-                closeButton: $$2('<div class="' + this.classes.closeButton + '">&times;</div>'),
-                confirmation: $$2('<div class="' + this.classes.confirmation + '"/>'),
-                confirmationButton: $$2('<button class="' + this.classes.confirmationButton + ' ' + this.classes.dtButton + '">'),
-                confirmationTitleRow: $$2('<div class="' + this.classes.confirmationTitleRow + '"></div>'),
-                dtContainer: $$2(this.s.dt.table().container()),
-                duplicateError: $$2('<span class="' + this.classes.modalError + '">' +
-                    this.s.dt.i18n('stateRestore.duplicateError', this.c.i18n.duplicateError) +
-                    '</span>'),
-                emptyError: $$2('<span class="' + this.classes.modalError + '">' +
-                    this.s.dt.i18n('stateRestore.emptyError', this.c.i18n.emptyError) +
-                    '</span>'),
-                removeContents: $$2('<div class="' + this.classes.confirmationText + '"><span>' +
-                    this.s.dt
-                        .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
-                        .replace(/%s/g, StateRestore.entityEncode(this.s.identifier)) +
-                    '</span></div>'),
-                removeError: $$2('<span class="' + this.classes.modalError + '">' +
-                    this.s.dt.i18n('stateRestore.removeError', this.c.i18n.removeError) +
-                    '</span>'),
-                removeTitle: $$2('<h2 class="' + this.classes.confirmationTitle + '">' +
-                    this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle, 1) +
-                    '</h2>'),
-                renameContents: $$2('<div class="' + this.classes.confirmationText + ' ' + this.classes.renameModal + '">' +
-                    '<label class="' + this.classes.confirmationMessage + '">' +
-                    this.s.dt
-                        .i18n('stateRestore.renameLabel', this.c.i18n.renameLabel)
-                        .replace(/%s/g, StateRestore.entityEncode(this.s.identifier)) +
-                    '</label>' +
-                    '</div>'),
-                renameInput: $$2('<input class="' + this.classes.input + '" type="text"></input>'),
-                renameTitle: $$2('<h2 class="' + this.classes.confirmationTitle + '">' +
-                    this.s.dt.i18n('stateRestore.renameTitle', this.c.i18n.renameTitle) +
-                    '</h2>')
-            };
-            // When a StateRestore instance is created the current state of the
-            // table should also be saved.
-            this.save(state, successCallback, !isPreDefined);
-        }
-        /**
-         * Removes a state from storage and then triggers the dtsr-remove event
-         * so that the StateRestoreCollection class can remove it's references as well.
-         *
-         * @param skipModal Flag to indicate if the modal should be skipped or not
-         */
-        StateRestore.prototype.remove = function (skipModal) {
-            var _a;
-            var _this = this;
-            if (skipModal === void 0) { skipModal = false; }
-            // Check if removal of states is allowed
-            if (!this.c.remove) {
-                return false;
-            }
-            var removeFunction;
-            var ajaxData = {
-                action: 'remove',
-                stateRestore: (_a = {},
-                    _a[this.s.identifier] = this.s.savedState,
-                    _a)
-            };
-            var successCallback = function () {
-                _this.dom.confirmation.trigger('dtsr-remove');
-                $$2(_this.s.dt.table().node()).trigger('stateRestore-change');
-                _this.dom.background.click();
-                _this.dom.confirmation.remove();
-                $$2(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
-                _this.dom.confirmationButton.off('click');
-            };
-            // If the remove is not happening over ajax remove it from local storage and then trigger the event
-            if (!this.c.ajax) {
-                removeFunction = function () {
-                    try {
-                        localStorage.removeItem('DataTables_stateRestore_' + _this.s.identifier + '_' + location.pathname +
-                            (_this.s.tableId ? '_' + _this.s.tableId : ''));
-                        successCallback();
-                    }
-                    catch (e) {
-                        _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
-                        _this.dom.confirmation.append(_this.dom.removeError);
-                        return 'remove';
-                    }
-                    return true;
-                };
-            }
-            // Ajax property has to be a string, not just true
-            // Also only want to save if the table has been initialised and the states have been loaded in
-            else if (this.s.dt.settings()[0]._bInitComplete) {
-                removeFunction = function () {
-                    ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
-                };
-            }
-            // If the modal is to be skipped then remove straight away
-            if (skipModal) {
-                this.dom.confirmation.appendTo(this.dom.dtContainer);
-                $$2(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-                removeFunction();
-                this.dom.confirmation.remove();
-            }
-            // Otherwise display the modal
-            else {
-                this._newModal(this.dom.removeTitle, this.s.dt.i18n('stateRestore.removeSubmit', this.c.i18n.removeSubmit), removeFunction, this.dom.removeContents);
-            }
-            return true;
-        };
-        /**
-         * Compares the state held within this instance with a state that is passed in
-         *
-         * @param state The state that is to be compared against
-         * @returns boolean indicating if the states match
-         */
-        StateRestore.prototype.compare = function (state) {
-            // Order
-            if (!this.c.saveState.order) {
-                state.order = undefined;
-            }
-            // Search
-            if (!this.c.saveState.search) {
-                state.search = undefined;
-            }
-            // Columns
-            if (this.c.saveState.columns && state.columns) {
-                for (var i = 0, ien = state.columns.length; i < ien; i++) {
-                    // Visibility
-                    if (typeof this.c.saveState.columns !== 'boolean' && !this.c.saveState.columns.visible) {
-                        state.columns[i].visible = undefined;
-                    }
-                    // Search
-                    if (typeof this.c.saveState.columns !== 'boolean' && !this.c.saveState.columns.search) {
-                        state.columns[i].search = undefined;
-                    }
-                }
-            }
-            else if (!this.c.saveState.columns) {
-                state.columns = undefined;
-            }
-            // Paging
-            if (!this.c.saveState.paging) {
-                state.page = undefined;
-            }
-            // SearchBuilder
-            if (!this.c.saveState.searchBuilder) {
-                state.searchBuilder = undefined;
-            }
-            // SearchPanes
-            if (!this.c.saveState.searchPanes) {
-                state.searchPanes = undefined;
-            }
-            // Select
-            if (!this.c.saveState.select) {
-                state.select = undefined;
-            }
-            // ColReorder
-            if (!this.c.saveState.colReorder) {
-                state.ColReorder = undefined;
-            }
-            // Scroller
-            if (!this.c.saveState.scroller) {
-                state.scroller = undefined;
-                if (dataTable$1.Scroller !== undefined) {
-                    state.start = 0;
-                }
-            }
-            // Paging
-            if (!this.c.saveState.paging) {
-                state.start = 0;
-            }
-            // Page Length
-            if (!this.c.saveState.length) {
-                state.length = undefined;
-            }
-            // Need to delete properties that we do not want to compare
-            delete state.time;
-            var copyState = this.s.savedState;
-            delete copyState.time;
-            delete copyState.c;
-            delete copyState.stateRestore;
-            // Perform a deep compare of the two state objects
-            return this._deepCompare(state, copyState);
-        };
-        /**
-         * Removes all of the dom elements from the document
-         */
-        StateRestore.prototype.destroy = function () {
-            $$2.each(this.dom, function (name, el) {
-                el.off().remove();
+		if (typeof window === 'undefined') {
+			module.exports = function (root) {
+				if (! root) {
+					// CommonJS environments without a window global must pass a
+					// root. This will give an error otherwise
+					root = window;
+				}
+
+				cjsRequires(root);
+				return factory(root, root.document, root.DataTable);
+			};
+		}
+		else {
+			cjsRequires(window);
+			module.exports = factory(window, window.document, window.DataTable);
+		}
+	}
+	else {
+		// Browser
+		factory(window, document, window.DataTable);
+	}
+}(function(window, document, DataTable) {
+'use strict';
+
+var Dom = DataTable.Dom;
+var Api = DataTable.Api;
+var util = DataTable.util;
+
+const stateManipulators = {
+    cardView: {
+        available: state => {
+            return state.cardView ? true : false;
+        },
+        remove: state => {
+            delete state.cardView;
+        },
+        text: dt => dt.i18n('stateRestore.option.cardView', 'Card view mode')
+    },
+    columnVisibility: {
+        available: state => {
+            return state.columns &&
+                state.columns.length &&
+                typeof state.columns[0].visible === 'boolean'
+                ? true
+                : false;
+        },
+        remove: state => {
+            state.columns.forEach((col) => {
+                delete col.visible;
             });
-        };
-        /**
-         * Loads the state referenced by the identifier from storage
-         *
-         * @param state The identifier of the state that should be loaded
-         * @returns the state that has been loaded
-         */
-        StateRestore.prototype.load = function () {
-            var _this = this;
-            var loadedState = this.s.savedState;
-            var settings = this.s.dt.settings()[0];
-            // Always want the states stored here to be loaded in - regardless of when they were created
-            loadedState.time = +new Date();
-            settings.oLoadedState = $$2.extend(true, {}, loadedState);
-            // Click on a background if there is one to shut the collection
-            $$2('div.dt-button-background').click();
-            var loaded = function () {
-                var correctPaging = function (e, preSettings) {
-                    setTimeout(function () {
-                        var currpage = preSettings._iDisplayStart / preSettings._iDisplayLength;
-                        var intendedPage = loadedState.start / loadedState.length;
-                        // If the paging is incorrect then we have to set it again so that it is correct
-                        // This happens when a searchpanes filter is removed
-                        // This has to happen in a timeout because searchpanes only deselects after a timeout
-                        if (currpage >= 0 && intendedPage >= 0 && currpage !== intendedPage) {
-                            _this.s.dt.page(intendedPage).draw(false);
-                        }
-                    }, 50);
-                };
-                _this.s.dt.one('preDraw', correctPaging);
-                _this.s.dt.draw(false);
-            };
-            // Call the internal datatables function to implement the state on the table
-            if (DataTable.versionCheck('2')) {
-                this.s.dt.state(loadedState);
-                loaded();
-            }
-            else {
-                // Legacy
-                DataTable.ext.oApi._fnImplementState(settings, loadedState, loaded);
-            }
-            return loadedState;
-        };
-        /**
-         * Shows a modal that allows a state to be renamed
-         *
-         * @param newIdentifier Optional. The new identifier for this state
-         */
-        StateRestore.prototype.rename = function (newIdentifier, currentIdentifiers) {
-            var _this = this;
-            if (newIdentifier === void 0) { newIdentifier = null; }
-            // Check if renaming of states is allowed
-            if (!this.c.rename) {
-                return;
-            }
-            var renameFunction = function () {
-                var _a;
-                if (newIdentifier === null) {
-                    var tempIdentifier = $$2('input.' + _this.classes.input.replace(/ /g, '.')).val();
-                    if (tempIdentifier.length === 0) {
-                        _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
-                        _this.dom.confirmation.append(_this.dom.emptyError);
-                        return 'empty';
-                    }
-                    else if (currentIdentifiers.includes(tempIdentifier)) {
-                        _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
-                        _this.dom.confirmation.append(_this.dom.duplicateError);
-                        return 'duplicate';
+        },
+        text: dt => dt.i18n('stateRestore.option.columnVisibility', 'Column visibility')
+    },
+    columnSearch: {
+        available: state => {
+            return state.columns &&
+                state.columns.length &&
+                typeof state.columns[0].search !== 'undefined'
+                ? true
+                : false;
+        },
+        remove: state => {
+            state.columns.forEach((col) => {
+                delete col.search;
+            });
+        },
+        text: dt => dt.i18n('stateRestore.option.columnSearch', 'Search (Columns)')
+    },
+    columnControl: {
+        available: state => {
+            return state.columnControl ? true : false;
+        },
+        remove: state => {
+            delete state.columnControl;
+        },
+        text: dt => dt.i18n('stateRestore.option.columnControl', 'Search (Column Control)')
+    },
+    columnOrder: {
+        available: state => {
+            return state.colReorder ? true : false;
+        },
+        remove: state => {
+            delete state.colReorder;
+        },
+        text: dt => dt.i18n('stateRestore.option.columnOrder', 'Column ordering')
+    },
+    order: {
+        available: state => {
+            return typeof state.order !== 'undefined';
+        },
+        remove: state => {
+            delete state.order;
+        },
+        text: dt => dt.i18n('stateRestore.option.order', 'Ordering')
+    },
+    pageStart: {
+        available: state => {
+            return (typeof state.start !== 'undefined');
+        },
+        remove: state => {
+            delete state.start;
+        },
+        text: dt => dt.i18n('stateRestore.option.pageStart', 'Paging position')
+    },
+    pageLength: {
+        available: state => {
+            return (typeof state.length !== 'undefined');
+        },
+        remove: state => {
+            delete state.length;
+        },
+        text: dt => dt.i18n('stateRestore.option.pageLength', 'Paging length')
+    },
+    scroller: {
+        available: state => {
+            return typeof state.scroller !== 'undefined';
+        },
+        remove: state => {
+            delete state.scroller;
+        },
+        text: dt => dt.i18n('stateRestore.option.scroller', 'Scroller position')
+    },
+    search: {
+        available: state => {
+            return typeof state.search !== 'undefined';
+        },
+        remove: state => {
+            delete state.search;
+            delete state.searchGroups;
+        },
+        text: dt => dt.i18n('stateRestore.option.search', 'Search (global)')
+    },
+    searchBuilder: {
+        available: state => {
+            return typeof state.searchBuilder !== 'undefined';
+        },
+        remove: state => {
+            delete state.searchBuilder;
+        },
+        text: dt => dt.i18n('stateRestore.option.searchBuilder', 'Search (SearchBuilder)')
+    },
+    searchPanes: {
+        available: state => {
+            return typeof state.searchPanes !== 'undefined';
+        },
+        remove: state => {
+            delete state.searchPanes;
+        },
+        text: dt => dt.i18n('stateRestore.option.searchBuilder', 'Search (SearchPanes)')
+    },
+    select: {
+        available: state => {
+            return typeof state.select !== 'undefined';
+        },
+        remove: state => {
+            delete state.select;
+        },
+        text: dt => dt.i18n('stateRestore.option.searchBuilder', 'Row selection')
+    },
+};
+
+const ajax = {
+    read: function (dt, host) {
+        let p = new Promise((resolve, reject) => {
+            let options = util.object.assignDeep({
+                // Ajax properties that could be overridden
+                method: 'post',
+                dataType: 'json',
+                data: {
+                    action: 'state-read',
+                    path: window.location.pathname,
+                    table: dt.table().node().id
+                }
+            }, host.ajax(), {
+                // Ajax properties that can't be overridden
+                success: json => {
+                    if (json.error) {
+                        reject();
                     }
                     else {
-                        newIdentifier = tempIdentifier;
+                        let loadedStates = json.data
+                            .map(s => {
+                            let state = Object.assign({}, s);
+                            // Already JSON
+                            if (typeof s.state === 'object') {
+                                return s.state;
+                            }
+                            // Or string based
+                            try {
+                                state.state = JSON.parse(s.state);
+                                return state;
+                            }
+                            catch (e) {
+                                // noop
+                            }
+                            return null;
+                        })
+                            .filter(s => !!s);
+                        resolve(loadedStates);
                     }
-                }
-                var ajaxData = {
-                    action: 'rename',
-                    stateRestore: (_a = {},
-                        _a[_this.s.identifier] = newIdentifier,
-                        _a)
-                };
-                var successCallback = function () {
-                    _this.s.identifier = newIdentifier;
-                    _this.save(_this.s.savedState, function () { return null; }, false);
-                    _this.dom.removeContents = $$2('<div class="' + _this.classes.confirmationText + '"><span>' +
-                        _this.s.dt
-                            .i18n('stateRestore.removeConfirm', _this.c.i18n.removeConfirm)
-                            .replace(/%s/g, _this.s.identifier) +
-                        '</span></div>');
-                    _this.dom.confirmation.trigger('dtsr-rename');
-                    _this.dom.background.click();
-                    _this.dom.confirmation.remove();
-                    $$2(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
-                    _this.dom.confirmationButton.off('click');
-                };
-                if (!_this.c.ajax) {
-                    try {
-                        localStorage.removeItem('DataTables_stateRestore_' + _this.s.identifier + '_' + location.pathname +
-                            (_this.s.tableId ? '_' + _this.s.tableId : ''));
-                        successCallback();
-                    }
-                    catch (e) {
-                        _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
-                        _this.dom.confirmation.append(_this.dom.removeError);
-                        return false;
-                    }
-                }
-                else if (_this.s.dt.settings()[0]._bInitComplete) {
-                    ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
-                }
-                return true;
-            };
-            // Check if a new identifier has been provided, if so no need for a modal
-            if (newIdentifier !== null) {
-                if (currentIdentifiers.includes(newIdentifier)) {
-                    throw new Error(this.s.dt.i18n('stateRestore.duplicateError', this.c.i18n.duplicateError));
-                }
-                else if (newIdentifier.length === 0) {
-                    throw new Error(this.s.dt.i18n('stateRestore.emptyError', this.c.i18n.emptyError));
-                }
-                else {
-                    this.dom.confirmation.appendTo(this.dom.dtContainer);
-                    $$2(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-                    renameFunction();
-                    this.dom.confirmation.remove();
-                }
-            }
-            else {
-                this.dom.renameInput.val(this.s.identifier);
-                this.dom.renameContents.append(this.dom.renameInput);
-                this._newModal(this.dom.renameTitle, this.s.dt.i18n('stateRestore.renameButton', this.c.i18n.renameButton), renameFunction, this.dom.renameContents);
-            }
-        };
-        /**
-         * Saves the tables current state using the identifier that is passed in.
-         *
-         * @param state Optional. If provided this is the state that will be saved rather than using the current state
-         */
-        StateRestore.prototype.save = function (state, passedSuccessCallback, callAjax) {
-            var _a;
-            var _this = this;
-            if (callAjax === void 0) { callAjax = true; }
-            // Check if saving states is allowed
-            if (!this.c.save) {
-                if (passedSuccessCallback) {
-                    passedSuccessCallback.call(this);
-                }
-                return;
-            }
-            // this.s.dt.state.save();
-            var savedState;
-            // If no state has been provided then create a new one from the current state
-            this.s.dt.state.save();
-            if (state === undefined) {
-                savedState = this.s.dt.state();
-            }
-            else if (typeof state !== 'object') {
-                return;
-            }
-            else {
-                savedState = state;
-            }
-            if (savedState.stateRestore) {
-                savedState.stateRestore.isPreDefined = this.s.isPreDefined;
-                savedState.stateRestore.state = this.s.identifier;
-                savedState.stateRestore.tableId = this.s.tableId;
-            }
-            else {
-                savedState.stateRestore = {
-                    isPreDefined: this.s.isPreDefined,
-                    state: this.s.identifier,
-                    tableId: this.s.tableId
-                };
-            }
-            this.s.savedState = savedState;
-            // Order
-            if (!this.c.saveState.order) {
-                this.s.savedState.order = undefined;
-            }
-            // Search
-            if (!this.c.saveState.search) {
-                this.s.savedState.search = undefined;
-            }
-            // Columns
-            if (this.c.saveState.columns && this.s.savedState.columns) {
-                for (var i = 0, ien = this.s.savedState.columns.length; i < ien; i++) {
-                    // Visibility
-                    if (typeof this.c.saveState.columns !== 'boolean' && !this.c.saveState.columns.visible) {
-                        this.s.savedState.columns[i].visible = undefined;
-                    }
-                    // Search
-                    if (typeof this.c.saveState.columns !== 'boolean' && !this.c.saveState.columns.search) {
-                        this.s.savedState.columns[i].search = undefined;
-                    }
-                }
-            }
-            else if (!this.c.saveState.columns) {
-                this.s.savedState.columns = undefined;
-            }
-            // SearchBuilder
-            if (!this.c.saveState.searchBuilder) {
-                this.s.savedState.searchBuilder = undefined;
-            }
-            // SearchPanes
-            if (!this.c.saveState.searchPanes) {
-                this.s.savedState.searchPanes = undefined;
-            }
-            // Select
-            if (!this.c.saveState.select) {
-                this.s.savedState.select = undefined;
-            }
-            // ColReorder
-            if (!this.c.saveState.colReorder) {
-                this.s.savedState.ColReorder = undefined;
-            }
-            // Scroller
-            if (!this.c.saveState.scroller) {
-                this.s.savedState.scroller = undefined;
-                if (dataTable$1.Scroller !== undefined) {
-                    this.s.savedState.start = 0;
-                }
-            }
-            // Paging
-            if (!this.c.saveState.paging) {
-                this.s.savedState.start = 0;
-            }
-            // Page Length
-            if (!this.c.saveState.length) {
-                this.s.savedState.length = undefined;
-            }
-            this.s.savedState.c = this.c;
-            // Need to remove the parent reference before we save the state
-            // Its not needed to rebuild, but it does cause a circular reference when converting to JSON
-            if (this.s.savedState.c.splitSecondaries.length) {
-                for (var _i = 0, _b = this.s.savedState.c.splitSecondaries; _i < _b.length; _i++) {
-                    var secondary = _b[_i];
-                    if (secondary.parent) {
-                        secondary.parent = undefined;
-                    }
-                }
-            }
-            var ajaxData = {
-                action: 'save',
-                stateRestore: (_a = {},
-                    _a[this.s.identifier] = this.s.savedState,
-                    _a)
-            };
-            var successCallback = function () {
-                if (passedSuccessCallback) {
-                    passedSuccessCallback.call(_this);
-                }
-                _this.dom.confirmation.trigger('dtsr-save');
-                $$2(_this.s.dt.table().node()).trigger('stateRestore-change');
-            };
-            if (!this.c.ajax) {
-                localStorage.setItem('DataTables_stateRestore_' + this.s.identifier + '_' + location.pathname +
-                    (this.s.tableId ? '_' + this.s.tableId : ''), JSON.stringify(this.s.savedState));
-                successCallback();
-            }
-            else if (callAjax) {
-                this.s.dt.ready(function () {
-                    ajax(_this.s.dt, _this.c.ajax, ajaxData, successCallback);
-                });
-            }
-            else if (!callAjax) {
-                successCallback();
-            }
-        };
-        /**
-         * Encode HTML entities
-         *
-         * @param d String to encode
-         * @returns Encoded string
-         * @todo When DT1 support is dropped, switch to using `DataTable.util.escapeHtml`
-         */
-        StateRestore.entityEncode = function (d) {
-            return typeof d === 'string' ?
-                d
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;') :
-                d;
-        };
-        /**
-         * Performs a deep compare of two state objects, returning true if they match
-         *
-         * @param state1 The first object to compare
-         * @param state2 The second object to compare
-         * @returns boolean indicating if the objects match
-         */
-        StateRestore.prototype._deepCompare = function (state1, state2) {
-            if (state1 === null && state2 === null) {
-                return true;
-            }
-            else if (state1 === null || state2 === null) {
-                return false;
-            }
-            // Put keys and states into arrays as this makes the later code easier to work
-            var states = [state1, state2];
-            var keys = [Object.keys(state1).sort(), Object.keys(state2).sort()];
-            var startIdx, i;
-            // If scroller is included then we need to remove the start value
-            //  as it can be different but yield the same results
-            if (keys[0].includes('scroller')) {
-                startIdx = keys[0].indexOf('start');
-                if (startIdx) {
-                    keys[0].splice(startIdx, 1);
-                }
-            }
-            if (keys[1].includes('scroller')) {
-                startIdx = keys[1].indexOf('start');
-                if (startIdx) {
-                    keys[1].splice(startIdx, 1);
-                }
-            }
-            // We want to remove any private properties within the states
-            for (i = 0; i < keys[0].length; i++) {
-                if (keys[0][i].indexOf('_') === 0) {
-                    keys[0].splice(i, 1);
-                    i--;
-                    continue;
-                }
-                // If scroller is included then we need to remove the following values
-                //  as they can be different but yield the same results
-                if (keys[0][i] === 'baseRowTop' ||
-                    keys[0][i] === 'baseScrollTop' ||
-                    keys[0][i] === 'scrollTop' ||
-                    (!this.c.saveState.paging && keys[0][i] === 'page')) {
-                    keys[0].splice(i, 1);
-                    i--;
-                    continue;
-                }
-            }
-            for (i = 0; i < keys[1].length; i++) {
-                if (keys[1][i].indexOf('_') === 0) {
-                    keys[1].splice(i, 1);
-                    i--;
-                    continue;
-                }
-                if (keys[1][i] === 'baseRowTop' ||
-                    keys[1][i] === 'baseScrollTop' ||
-                    keys[1][i] === 'scrollTop' ||
-                    (!this.c.saveState.paging && keys[0][i] === 'page')) {
-                    keys[1].splice(i, 1);
-                    i--;
-                    continue;
-                }
-            }
-            if (keys[0].length === 0 && keys[1].length > 0 ||
-                keys[1].length === 0 && keys[0].length > 0) {
-                return false;
-            }
-            // We are only going to compare the keys that are common between both states
-            for (i = 0; i < keys[0].length; i++) {
-                if (!keys[1].includes(keys[0][i])) {
-                    keys[0].splice(i, 1);
-                    i--;
-                }
-            }
-            for (i = 0; i < keys[1].length; i++) {
-                if (!keys[0].includes(keys[1][i])) {
-                    keys[1].splice(i, 1);
-                    i--;
-                }
-            }
-            // Then each key and value has to be checked against each other
-            for (i = 0; i < keys[0].length; i++) {
-                // If the keys dont equal, or their corresponding types are different we can return false
-                if (keys[0][i] !== keys[1][i] || typeof states[0][keys[0][i]] !== typeof states[1][keys[1][i]]) {
-                    return false;
-                }
-                // If the type is an object then further deep comparisons are required
-                if (typeof states[0][keys[0][i]] === 'object') {
-                    // Arrays must be the same length to be matched
-                    if (Array.isArray(states[0][keys[0][i]]) && Array.isArray(states[1][keys[1][i]])) {
-                        if (states[0][keys[0][i]].length !== states[1][keys[0][i]].length) {
-                            return false;
-                        }
-                    }
-                    if (!this._deepCompare(states[0][keys[0][i]], states[1][keys[1][i]])) {
-                        return false;
-                    }
-                }
-                else if (typeof states[0][keys[0][i]] === 'number' && typeof states[1][keys[1][i]] === 'number') {
-                    if (Math.round(states[0][keys[0][i]]) !== Math.round(states[1][keys[1][i]])) {
-                        return false;
-                    }
-                }
-                // Otherwise we can just check the value
-                else if (states[0][keys[0][i]] !== states[1][keys[1][i]]) {
-                    return false;
-                }
-            }
-            // If we get all the way to here there are no differences so return true for this object
-            return true;
-        };
-        StateRestore.prototype._keyupFunction = function (e) {
-            // If enter same action as pressing the button
-            if (e.key === 'Enter') {
-                this.dom.confirmationButton.click();
-            }
-            // If escape close modal
-            else if (e.key === 'Escape') {
-                $$2('div.' + this.classes.background.replace(/ /g, '.')).click();
-            }
-        };
-        /**
-         * Creates a new confirmation modal for the user to approve an action
-         *
-         * @param title The title that is to be displayed at the top of the modal
-         * @param buttonText The text that is to be displayed in the confirmation button of the modal
-         * @param buttonAction The action that should be taken when the confirmation button is pressed
-         * @param modalContents The contents for the main body of the modal
-         */
-        StateRestore.prototype._newModal = function (title, buttonText, buttonAction, modalContents) {
-            var _this = this;
-            this.dom.background.appendTo(this.dom.dtContainer);
-            this.dom.confirmationTitleRow.empty().append(title);
-            this.dom.confirmationButton.html(buttonText);
-            this.dom.confirmation
-                .empty()
-                .append(this.dom.confirmationTitleRow)
-                .append(modalContents)
-                .append($$2('<div class="' + this.classes.confirmationButtons + '"></div>')
-                .append(this.dom.confirmationButton))
-                .appendTo(this.dom.dtContainer);
-            $$2(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-            var inputs = modalContents.children('input');
-            // If there is an input focus on that
-            if (inputs.length > 0) {
-                $$2(inputs[0]).focus();
-            }
-            // Otherwise focus on the confirmation button
-            else {
-                this.dom.confirmationButton.focus();
-            }
-            var background = $$2('div.' + this.classes.background.replace(/ /g, '.'));
-            if (this.c.modalCloseButton) {
-                this.dom.confirmation.append(this.dom.closeButton);
-                this.dom.closeButton.on('click', function () { return background.click(); });
-            }
-            // When the button is clicked, call the appropriate action,
-            // remove the background and modal from the screen and unbind the keyup event.
-            this.dom.confirmationButton.on('click', function () { return buttonAction(); });
-            this.dom.confirmation.on('click', function (e) {
-                e.stopPropagation();
-            });
-            // When the button is clicked, remove the background and modal from the screen and unbind the keyup event.
-            background.one('click', function () {
-                _this.dom.background.remove();
-                _this.dom.confirmation.remove();
-                $$2(document).unbind('keyup', function (e) { return _this._keyupFunction(e); });
-            });
-            $$2(document).on('keyup', function (e) { return _this._keyupFunction(e); });
-        };
-        StateRestore.version = '1.5.0-dev';
-        StateRestore.classes = {
-            background: 'dtsr-background',
-            closeButton: 'dtsr-popover-close',
-            confirmation: 'dtsr-confirmation',
-            confirmationButton: 'dtsr-confirmation-button',
-            confirmationButtons: 'dtsr-confirmation-buttons',
-            confirmationMessage: 'dtsr-confirmation-message dtsr-name-label',
-            confirmationText: 'dtsr-confirmation-text',
-            confirmationTitle: 'dtsr-confirmation-title',
-            confirmationTitleRow: 'dtsr-confirmation-title-row',
-            dtButton: 'dt-button',
-            input: 'dtsr-input',
-            modalError: 'dtsr-modal-error',
-            renameModal: 'dtsr-rename-modal'
-        };
-        StateRestore.defaults = {
-            _createInSaved: false,
-            ajax: false,
-            create: true,
-            creationModal: false,
-            i18n: {
-                creationModal: {
-                    button: 'Create',
-                    colReorder: 'Column Order:',
-                    columns: {
-                        search: 'Column Search:',
-                        visible: 'Column Visibility:'
-                    },
-                    length: 'Page Length:',
-                    name: 'Name:',
-                    order: 'Sorting:',
-                    paging: 'Paging:',
-                    scroller: 'Scroll Position:',
-                    search: 'Search:',
-                    searchBuilder: 'SearchBuilder:',
-                    searchPanes: 'SearchPanes:',
-                    select: 'Select:',
-                    title: 'Create New State',
-                    toggleLabel: 'Includes:'
                 },
-                duplicateError: 'A state with this name already exists.',
-                emptyError: 'Name cannot be empty.',
-                emptyStates: 'No saved states',
-                removeConfirm: 'Are you sure you want to remove "%s"?',
-                removeError: 'Failed to remove state.',
-                removeJoiner: ' and ',
-                removeSubmit: 'Remove',
-                removeTitle: 'Remove State',
-                renameButton: 'Rename',
-                renameLabel: 'New Name for "%s":',
-                renameTitle: 'Rename State'
-            },
-            modalCloseButton: true,
-            remove: true,
-            rename: true,
-            save: true,
-            saveState: {
-                colReorder: true,
-                columns: {
-                    search: true,
-                    visible: true
-                },
-                length: true,
-                order: true,
-                paging: true,
-                scroller: true,
-                search: true,
-                searchBuilder: true,
-                searchPanes: true,
-                select: true
-            },
-            splitSecondaries: [
-                'updateState',
-                'renameState',
-                'removeState'
-            ],
-            toggle: {
-                colReorder: false,
-                columns: {
-                    search: false,
-                    visible: false
-                },
-                length: false,
-                order: false,
-                paging: false,
-                scroller: false,
-                search: false,
-                searchBuilder: false,
-                searchPanes: false,
-                select: false
-            },
-            createButton: null,
-            createState: null
-        };
-        return StateRestore;
-    }());
-
-    var $$1;
-    var dataTable;
-    function setJQuery(jq) {
-        $$1 = jq;
-        dataTable = jq.fn.dataTable;
-    }
-    var StateRestoreCollection = /** @class */ (function () {
-        function StateRestoreCollection(settings, opts) {
-            var _this = this;
-            // Check that the required version of DataTables is included
-            if (!dataTable || !dataTable.versionCheck || !dataTable.versionCheck('1.10.0')) {
-                throw new Error('StateRestore requires DataTables 1.10 or newer');
-            }
-            // Check that Select is included
-            // eslint-disable-next-line no-extra-parens
-            if (!dataTable.Buttons) {
-                throw new Error('StateRestore requires Buttons');
-            }
-            var table = new dataTable.Api(settings);
-            this.classes = $$1.extend(true, {}, StateRestoreCollection.classes);
-            if (table.settings()[0]._stateRestore !== undefined) {
-                return;
-            }
-            // Get options from user
-            this.c = $$1.extend(true, {}, StateRestoreCollection.defaults, opts);
-            this.s = {
-                dt: table,
-                hasColReorder: dataTable.ColReorder !== undefined,
-                hasScroller: dataTable.Scroller !== undefined,
-                hasSearchBuilder: dataTable.SearchBuilder !== undefined,
-                hasSearchPanes: dataTable.SearchPanes !== undefined,
-                hasSelect: dataTable.select !== undefined,
-                states: []
-            };
-            this.s.dt.on('xhr', function (e, xhrsettings, json) {
-                // Has staterestore been used before? Is there anything to load?
-                if (json && json.stateRestore) {
-                    _this._addPreDefined(json.stateRestore);
+                error: () => {
+                    host.error('Error in JSON response');
+                    resolve([]);
                 }
             });
-            this.dom = {
-                background: $$1('<div class="' + this.classes.background + '"/>'),
-                checkboxInputRow: $$1('<div class="' + this.classes.formRow + '">' +
-                    '<label class="' + this.classes.nameLabel + '">' +
-                    this.s.dt.i18n('stateRestore.creationModal.toggleLabel', this.c.i18n.creationModal.toggleLabel) +
-                    '</label>' +
-                    '<div class="dtsr-input"></div>' +
-                    '</div>'),
-                closeButton: $$1('<div class="' + this.classes.closeButton + '">x</div>'),
-                colReorderToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.colReorderToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.colReorder', this.c.i18n.creationModal.colReorder) +
-                    '</div>'),
-                columnsSearchToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.columnsSearchToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.columns.search', this.c.i18n.creationModal.columns.search) +
-                    '</div>'),
-                columnsVisibleToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.columnsVisibleToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.columns.visible', this.c.i18n.creationModal.columns.visible) +
-                    '</div>'),
-                confirmation: $$1('<div class="' + this.classes.confirmation + '"/>'),
-                confirmationTitleRow: $$1('<div class="' + this.classes.confirmationTitleRow + '"></div>'),
-                createButtonRow: $$1('<div class="' + this.classes.formRow + ' ' + this.classes.modalFoot + '">' +
-                    '<button class="' + this.classes.creationButton + ' ' + this.classes.dtButton + '">' +
-                    this.s.dt.i18n('stateRestore.creationModal.button', this.c.i18n.creationModal.button) +
-                    '</button>' +
-                    '</div>'),
-                creation: $$1('<div class="' + this.classes.creation + '"/>'),
-                creationForm: $$1('<div class="' + this.classes.creationForm + '"/>'),
-                creationTitle: $$1('<div class="' + this.classes.creationText + '">' +
-                    '<h2 class="' + this.classes.creationTitle + '">' +
-                    this.s.dt.i18n('stateRestore.creationModal.title', this.c.i18n.creationModal.title) +
-                    '</h2>' +
-                    '</div>'),
-                dtContainer: $$1(this.s.dt.table().container()),
-                duplicateError: $$1('<span class="' + this.classes.modalError + '">' +
-                    this.s.dt.i18n('stateRestore.duplicateError', this.c.i18n.duplicateError) +
-                    '</span>'),
-                emptyError: $$1('<span class="' + this.classes.modalError + '">' +
-                    this.s.dt.i18n('stateRestore.emptyError', this.c.i18n.emptyError) +
-                    '</span>'),
-                lengthToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.lengthToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.length', this.c.i18n.creationModal.length) +
-                    '</div>'),
-                nameInputRow: $$1('<div class="' + this.classes.formRow + '">' +
-                    '<label class="' + this.classes.nameLabel + '">' +
-                    this.s.dt.i18n('stateRestore.creationModal.name', this.c.i18n.creationModal.name) +
-                    '</label>' +
-                    '<div class="dtsr-input">' +
-                    '<input class="' + this.classes.nameInput + '" type="text">' +
-                    '</div>' +
-                    '</div>'),
-                orderToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.orderToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.order', this.c.i18n.creationModal.order) +
-                    '</div>'),
-                pagingToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.pagingToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.paging', this.c.i18n.creationModal.paging) +
-                    '</div>'),
-                removeContents: $$1('<div class="' + this.classes.confirmationText + '"><span></span></div>'),
-                removeTitle: $$1('<div class="' + this.classes.creationText + '">' +
-                    '<h2 class="' + this.classes.creationTitle + '"></h2>' +
-                    '</div>'),
-                scrollerToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.scrollerToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.scroller', this.c.i18n.creationModal.scroller) +
-                    '</div>'),
-                searchBuilderToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.searchBuilderToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.searchBuilder', this.c.i18n.creationModal.searchBuilder) +
-                    '</div>'),
-                searchPanesToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.searchPanesToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.searchPanes', this.c.i18n.creationModal.searchPanes) +
-                    '</div>'),
-                searchToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.searchToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.search', this.c.i18n.creationModal.search) +
-                    '</div>'),
-                selectToggle: $$1('<div class="' + this.classes.checkLabel + '">' +
-                    '<input type="checkbox" class="' +
-                    this.classes.selectToggle + ' ' +
-                    this.classes.checkBox +
-                    '" checked>' +
-                    this.s.dt.i18n('stateRestore.creationModal.select', this.c.i18n.creationModal.select) +
-                    '</div>')
-            };
-            table.settings()[0]._stateRestore = this;
-            this._searchForStates();
-            // Has StateRestore been used before? Is there anything to load?
-            this._addPreDefined(this.c.preDefined);
-            // Ajax load if required
-            var fn = function () {
-                ajax(_this.s.dt, _this.c.ajax, { action: 'load' }, function (data) {
-                    _this._addPreDefined(data);
-                });
-            };
-            if (this.s.dt.ready()) {
-                fn();
+            DataTable.ajax(options);
+        });
+        return p;
+    },
+    create: function (dt, state, host) {
+        let p = new Promise((resolve, reject) => {
+            if (state.isStatic) {
+                // Static states don't get sent to the server-side for storage,
+                // so we just need to update the host's storage with the state.
+                if (!state.id) {
+                    state.id = host.randomId();
+                }
+                host.storeAdd(state);
             }
             else {
-                this.s.dt.one('preInit.dtsr', function () {
-                    fn();
-                });
-            }
-            this.s.dt.on('destroy.dtsr', function () {
-                _this.destroy();
-            });
-            this.s.dt.on('draw.dtsr buttons-action.dtsr', function () { return _this.findActive(); });
-            return this;
-        }
-        /**
-         * Adds a new StateRestore instance to the collection based on the current properties of the table
-         *
-         * @param identifier The value that is used to identify a state.
-         * @returns The state that has been created
-         */
-        StateRestoreCollection.prototype.addState = function (identifier, currentIdentifiers, options) {
-            var _this = this;
-            // If creation/saving is not allowed then return
-            if (!this.c.create || !this.c.save) {
-                return;
-            }
-            // Check if the state exists before creating a new ones
-            var state = this.getState(identifier);
-            var createFunction = function (id, toggles) {
-                if (id.length === 0) {
-                    return 'empty';
-                }
-                else if (currentIdentifiers.includes(id)) {
-                    return 'duplicate';
-                }
-                _this.s.dt.state.save();
-                var that = _this;
-                var successCallback = function () {
-                    that.s.states.push(this);
-                    that._collectionRebuild();
-                };
-                var currState = _this.s.dt.state();
-                currState.stateRestore = {
-                    isPreDefined: false,
-                    state: id,
-                    tableId: _this.s.dt.table().node().id
-                };
-                if (toggles.saveState) {
-                    var opts = _this.c.saveState;
-                    // We don't want to extend, but instead AND all properties of the saveState option
-                    for (var _i = 0, _a = Object.keys(toggles.saveState); _i < _a.length; _i++) {
-                        var key = _a[_i];
-                        if (typeof toggles.saveState[key] === 'object') {
-                            for (var _b = 0, _c = Object.keys(toggles.saveState[key]); _b < _c.length; _b++) {
-                                var nestedKey = _c[_b];
-                                if (!toggles.saveState[key][nestedKey]) {
-                                    opts[key][nestedKey] = false;
-                                }
+                // Non-static (i.e. user) states, do get sent to the server.
+                let options = util.object.assignDeep({
+                    // Ajax properties that could be overridden
+                    method: 'post',
+                    dataType: 'json',
+                    data: {
+                        action: 'state-create',
+                        isDefault: state.isDefault,
+                        isSharedOut: state.isSharedOut,
+                        name: state.name,
+                        path: window.location.pathname,
+                        state: JSON.stringify(state.state),
+                        table: dt.table().node().id
+                    }
+                }, host.ajax(), {
+                    // Ajax properties that can't be overridden
+                    success: json => {
+                        if (!json.error &&
+                            json.data &&
+                            json.data.length === 1) {
+                            let state = json.data[0];
+                            // Already JSON
+                            if (typeof state.state === 'object') {
+                                host.storeAdd(state);
+                                resolve(true);
+                            }
+                            // Or string based
+                            try {
+                                state.state = JSON.parse(state.state);
+                                host.storeAdd(state);
+                                resolve(true);
+                            }
+                            catch (e) {
+                                resolve(false);
                             }
                         }
-                        else if (!toggles.saveState[key]) {
-                            opts[key] = false;
+                        else {
+                            resolve(false);
                         }
-                    }
-                    _this.c.saveState = opts;
-                }
-                var newState = new StateRestore(_this.s.dt.settings()[0], $$1.extend(true, {}, _this.c, options), id, currState, false, successCallback);
-                $$1(_this.s.dt.table().node()).on('dtsr-modal-inserted', function () {
-                    newState.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState.s.identifier); });
-                    newState.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
-                    newState.dom.confirmation.one('dtsr-save', function () { return _this._collectionRebuild(); });
-                });
-                return true;
-            };
-            // If there isn't already a state with this identifier
-            if (state === null) {
-                if (this.c.creationModal || options !== undefined && options.creationModal) {
-                    this._creationModal(createFunction, identifier, options);
-                }
-                else {
-                    var success = createFunction(identifier, {});
-                    if (success === 'empty') {
-                        throw new Error(this.s.dt.i18n('stateRestore.emptyError', this.c.i18n.emptyError));
-                    }
-                    else if (success === 'duplicate') {
-                        throw new Error(this.s.dt.i18n('stateRestore.duplicateError', this.c.i18n.duplicateError));
-                    }
-                }
-            }
-            else {
-                throw new Error(this.s.dt.i18n('stateRestore.duplicateError', this.c.i18n.duplicateError));
-            }
-        };
-        /**
-         * Removes all of the states, showing a modal to the user for confirmation
-         *
-         * @param removeFunction The action to be taken when the action is confirmed
-         */
-        StateRestoreCollection.prototype.removeAll = function (removeFunction) {
-            // There are no states to remove so just return
-            if (this.s.states.length === 0) {
-                return;
-            }
-            var ids = this.s.states.map(function (state) { return state.s.identifier; });
-            var replacementString = ids[0];
-            if (ids.length > 1) {
-                replacementString = ids.slice(0, -1).join(', ') +
-                    this.s.dt.i18n('stateRestore.removeJoiner', this.c.i18n.removeJoiner) +
-                    ids.slice(-1);
-            }
-            $$1(this.dom.removeTitle).find('h2').html(this.s.dt.i18n('stateRestore.removeTitle', this.c.i18n.removeTitle, ids.length));
-            $$1(this.dom.removeContents.children('span')).html(this.s.dt
-                .i18n('stateRestore.removeConfirm', this.c.i18n.removeConfirm)
-                .replace(/%s/g, replacementString));
-            this._newModal(this.dom.removeTitle, this.s.dt.i18n('stateRestore.removeSubmit', this.c.i18n.removeSubmit), removeFunction, this.dom.removeContents);
-        };
-        /**
-         * Removes all of the dom elements from the document for the collection and the stored states
-         */
-        StateRestoreCollection.prototype.destroy = function () {
-            for (var _i = 0, _a = this.s.states; _i < _a.length; _i++) {
-                var state = _a[_i];
-                state.destroy();
-            }
-            $$1.each(this.dom, function (name, el) {
-                el.off().remove();
-            });
-            this.s.states = [];
-            this.s.dt.off('.dtsr');
-            $$1(this.s.dt.table().node()).off('.dtsr');
-        };
-        /**
-         * Identifies active states and updates their button to reflect this.
-         *
-         * @returns An array containing objects with the details of currently active states
-         */
-        StateRestoreCollection.prototype.findActive = function () {
-            // Make sure that the state is up to date
-            this.s.dt.state.save();
-            var currState = this.s.dt.state();
-            var button;
-            // Make all of the buttons inactive so that only any that match will be marked as active
-            var buttons = this.s.dt.buttons().nodes();
-            for (var _i = 0, buttons_1 = buttons; _i < buttons_1.length; _i++) {
-                button = buttons_1[_i];
-                if ($$1(button).hasClass('dtsr-state') || $$1(button).children().hasClass('dtsr-state')) {
-                    this.s.dt.button(button).active(false);
-                }
-            }
-            var results = [];
-            // Go through all of the states comparing if their state is the same to the current one
-            for (var _a = 0, _b = this.s.states; _a < _b.length; _a++) {
-                var state = _b[_a];
-                if (state.compare(currState)) {
-                    results.push({
-                        data: state.s.savedState,
-                        name: state.s.identifier
-                    });
-                    // If so, find the corresponding button and mark it as active
-                    for (var _c = 0, buttons_2 = buttons; _c < buttons_2.length; _c++) {
-                        button = buttons_2[_c];
-                        var btn = this.s.dt.button(button);
-                        if (btn.text() === state.s.identifier) {
-                            btn.active(true);
-                            break;
-                        }
-                    }
-                }
-            }
-            return results;
-        };
-        /**
-         * Gets a single state that has the identifier matching that which is passed in
-         *
-         * @param identifier The value that is used to identify a state
-         * @returns The state that has been identified or null if no states have been identified
-         */
-        StateRestoreCollection.prototype.getState = function (identifier) {
-            for (var _i = 0, _a = this.s.states; _i < _a.length; _i++) {
-                var state = _a[_i];
-                if (state.s.identifier === identifier) {
-                    return state;
-                }
-            }
-            return null;
-        };
-        /**
-         * Gets an array of all of the states
-         *
-         * @returns Any states that have been identified
-         */
-        StateRestoreCollection.prototype.getStates = function (ids) {
-            if (ids === undefined) {
-                return this.s.states;
-            }
-            else {
-                var states = [];
-                for (var _i = 0, ids_1 = ids; _i < ids_1.length; _i++) {
-                    var id = ids_1[_i];
-                    var found = false;
-                    for (var _a = 0, _b = this.s.states; _a < _b.length; _a++) {
-                        var state = _b[_a];
-                        if (id === state.s.identifier) {
-                            states.push(state);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        states.push(undefined);
-                    }
-                }
-                return states;
-            }
-        };
-        /**
-         * Reloads states that are set via datatables config or over ajax
-         *
-         * @param preDefined Object containing the predefined states that are to be reintroduced
-         */
-        StateRestoreCollection.prototype._addPreDefined = function (preDefined) {
-            var _this = this;
-            // There is a potential issue here if sorting where the string parts of the name are the same,
-            // only the number differs and there are many states - but this wouldn't be usfeul naming so
-            // more of a priority to sort alphabetically
-            var states = Object.keys(preDefined).sort(function (a, b) { return a > b ? 1 : a < b ? -1 : 0; });
-            var _loop_1 = function (state) {
-                for (var i = 0; i < this_1.s.states.length; i++) {
-                    if (this_1.s.states[i].s.identifier === state) {
-                        this_1.s.states.splice(i, 1);
-                    }
-                }
-                var that = this_1;
-                var successCallback = function () {
-                    that.s.states.push(this);
-                    that._collectionRebuild();
-                };
-                var loadedState = this_1._fixTypes(preDefined[state]);
-                var stateConfig = $$1.extend(true, {}, this_1.c, loadedState.c !== undefined ?
-                    {
-                        saveState: loadedState.c.saveState,
-                        remove: loadedState.c.remove,
-                        rename: loadedState.c.rename,
-                        save: loadedState.c.save
-                    } :
-                    undefined, true);
-                if (this_1.c.createState) {
-                    this_1.c.createState(stateConfig, loadedState);
-                }
-                var newState = new StateRestore(this_1.s.dt, stateConfig, state, loadedState, true, successCallback);
-                $$1(this_1.s.dt.table().node()).on('dtsr-modal-inserted', function () {
-                    newState.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState.s.identifier); });
-                    newState.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
-                    newState.dom.confirmation.one('dtsr-save', function () { return _this._collectionRebuild(); });
-                });
-            };
-            var this_1 = this;
-            for (var _i = 0, states_1 = states; _i < states_1.length; _i++) {
-                var state = states_1[_i];
-                _loop_1(state);
-            }
-        };
-        /**
-         * Rebuilds all of the buttons in the collection of states to make sure that states and text is up to date
-         */
-        StateRestoreCollection.prototype._collectionRebuild = function () {
-            var button = this.s.dt.button('SaveStateRestore:name');
-            var stateButtons = [];
-            var i;
-            // Need to get the original configuration object, so we can rebuild it
-            // It might be nested, so need to traverse down the tree
-            if (button[0]) {
-                var idxs = button.index().split('-');
-                stateButtons = button[0].inst.c.buttons;
-                for (i = 0; i < idxs.length; i++) {
-                    if (stateButtons[idxs[i]].buttons) {
-                        stateButtons = stateButtons[idxs[i]].buttons;
-                    }
-                    else {
-                        stateButtons = [];
-                        break;
-                    }
-                }
-            }
-            // remove any states from the previous rebuild - if they are still there they will be added later
-            for (i = 0; i < stateButtons.length; i++) {
-                if (stateButtons[i].extend === 'stateRestore') {
-                    stateButtons.splice(i, 1);
-                    i--;
-                }
-            }
-            if (this.c._createInSaved) {
-                stateButtons.push('createState');
-            }
-            var emptyText = '<span class="' + this.classes.emptyStates + '">' +
-                this.s.dt.i18n('stateRestore.emptyStates', this.c.i18n.emptyStates) +
-                '</span>';
-            // If there are no states display an empty message
-            if (this.s.states.length === 0) {
-                // Don't want the empty text included more than twice
-                if (!stateButtons.includes(emptyText)) {
-                    stateButtons.push(emptyText);
-                }
-            }
-            else {
-                // There are states to add so there shouldn't be any empty text left!
-                while (stateButtons.includes(emptyText)) {
-                    stateButtons.splice(stateButtons.indexOf(emptyText), 1);
-                }
-                // There is a potential issue here if sorting where the string parts of the name are the same,
-                // only the number differs and there are many states - but this wouldn't be usfeul naming so
-                // more of a priority to sort alphabetically
-                this.s.states = this.s.states.sort(function (a, b) {
-                    var aId = a.s.identifier;
-                    var bId = b.s.identifier;
-                    return aId > bId ?
-                        1 :
-                        aId < bId ?
-                            -1 :
-                            0;
-                });
-                // Construct the split property of each button
-                for (var _i = 0, _a = this.s.states; _i < _a.length; _i++) {
-                    var state = _a[_i];
-                    var split = this.c.splitSecondaries.slice();
-                    if (split.includes('updateState') && (!this.c.save || !state.c.save)) {
-                        split.splice(split.indexOf('updateState'), 1);
-                    }
-                    if (split.includes('renameState') &&
-                        (!this.c.save || !state.c.save || !this.c.rename || !state.c.rename)) {
-                        split.splice(split.indexOf('renameState'), 1);
-                    }
-                    if (split.includes('removeState') && (!this.c.remove || !state.c.remove)) {
-                        split.splice(split.indexOf('removeState'), 1);
-                    }
-                    var buttonConfig = {
-                        _stateRestore: state,
-                        attr: {
-                            title: state.s.identifier
-                        },
-                        config: {
-                            split: split
-                        },
-                        extend: 'stateRestore',
-                        text: StateRestore.entityEncode(state.s.identifier),
-                        popoverTitle: StateRestore.entityEncode(state.s.identifier)
-                    };
-                    if (this.c.createButton) {
-                        this.c.createButton(buttonConfig, state.s.savedState);
-                    }
-                    stateButtons.push(buttonConfig);
-                }
-            }
-            button.collectionRebuild(stateButtons);
-            // Need to disable the removeAllStates button if there are no states and it is present
-            var buttons = this.s.dt.buttons();
-            for (var _b = 0, buttons_3 = buttons; _b < buttons_3.length; _b++) {
-                var butt = buttons_3[_b];
-                if ($$1(butt.node).hasClass('dtsr-removeAllStates')) {
-                    if (this.s.states.length === 0) {
-                        this.s.dt.button(butt.node).disable();
-                    }
-                    else {
-                        this.s.dt.button(butt.node).enable();
-                    }
-                }
-            }
-        };
-        /**
-         * Displays a modal that is used to get information from the user to create a new state.
-         *
-         * @param buttonAction The action that should be taken when the button is pressed
-         * @param identifier The default identifier for the next new state
-         */
-        StateRestoreCollection.prototype._creationModal = function (buttonAction, identifier, options) {
-            var _this = this;
-            this.dom.creation.empty();
-            this.dom.creationForm.empty();
-            this.dom.nameInputRow.find('input').val(identifier);
-            this.dom.creationForm.append(this.dom.nameInputRow);
-            var tableConfig = this.s.dt.settings()[0].oInit;
-            var toggle;
-            var togglesToInsert = [];
-            var toggleDefined = options !== undefined && options.toggle !== undefined;
-            // Order toggle - check toggle and saving enabled
-            if (((!toggleDefined || options.toggle.order === undefined) && this.c.toggle.order ||
-                toggleDefined && options.toggle.order) &&
-                this.c.saveState.order &&
-                (tableConfig.ordering === undefined || tableConfig.ordering)) {
-                togglesToInsert.push(this.dom.orderToggle);
-            }
-            // Search toggle - check toggle and saving enabled
-            if (((!toggleDefined || options.toggle.search === undefined) && this.c.toggle.search ||
-                toggleDefined && options.toggle.search) &&
-                this.c.saveState.search &&
-                (tableConfig.searching === undefined || tableConfig.searching)) {
-                togglesToInsert.push(this.dom.searchToggle);
-            }
-            // Paging toggle - check toggle and saving enabled
-            if (((!toggleDefined || options.toggle.paging === undefined) && this.c.toggle.paging ||
-                toggleDefined && options.toggle.paging) &&
-                this.c.saveState.paging &&
-                (tableConfig.paging === undefined || tableConfig.paging)) {
-                togglesToInsert.push(this.dom.pagingToggle);
-            }
-            // Page Length toggle - check toggle and saving enabled
-            if (((!toggleDefined || options.toggle.length === undefined) && this.c.toggle.length ||
-                toggleDefined && options.toggle.length) &&
-                this.c.saveState.length &&
-                (tableConfig.length === undefined || tableConfig.length)) {
-                togglesToInsert.push(this.dom.lengthToggle);
-            }
-            // ColReorder toggle - check toggle and saving enabled
-            if (this.s.hasColReorder &&
-                ((!toggleDefined || options.toggle.colReorder === undefined) && this.c.toggle.colReorder ||
-                    toggleDefined && options.toggle.colReorder) &&
-                this.c.saveState.colReorder) {
-                togglesToInsert.push(this.dom.colReorderToggle);
-            }
-            // Scroller toggle - check toggle and saving enabled
-            if (this.s.hasScroller &&
-                ((!toggleDefined || options.toggle.scroller === undefined) && this.c.toggle.scroller ||
-                    toggleDefined && options.toggle.scroller) &&
-                this.c.saveState.scroller) {
-                togglesToInsert.push(this.dom.scrollerToggle);
-            }
-            // SearchBuilder toggle - check toggle and saving enabled
-            if (this.s.hasSearchBuilder &&
-                ((!toggleDefined || options.toggle.searchBuilder === undefined) && this.c.toggle.searchBuilder ||
-                    toggleDefined && options.toggle.searchBuilder) &&
-                this.c.saveState.searchBuilder) {
-                togglesToInsert.push(this.dom.searchBuilderToggle);
-            }
-            // SearchPanes toggle - check toggle and saving enabled
-            if (this.s.hasSearchPanes &&
-                ((!toggleDefined || options.toggle.searchPanes === undefined) && this.c.toggle.searchPanes ||
-                    toggleDefined && options.toggle.searchPanes) &&
-                this.c.saveState.searchPanes) {
-                togglesToInsert.push(this.dom.searchPanesToggle);
-            }
-            // Select toggle - check toggle and saving enabled
-            if (this.s.hasSelect &&
-                ((!toggleDefined || options.toggle.select === undefined) && this.c.toggle.select ||
-                    toggleDefined && options.toggle.select) &&
-                this.c.saveState.select) {
-                togglesToInsert.push(this.dom.selectToggle);
-            }
-            // Columns toggle - check toggle and saving enabled
-            if (typeof this.c.toggle.columns === 'boolean' &&
-                ((!toggleDefined || options.toggle.order === undefined) && this.c.toggle.columns ||
-                    toggleDefined && options.toggle.order) &&
-                this.c.saveState.columns) {
-                togglesToInsert.push(this.dom.columnsSearchToggle);
-                togglesToInsert.push(this.dom.columnsVisibleToggle);
-            }
-            else if ((!toggleDefined || options.toggle.columns === undefined) && typeof this.c.toggle.columns !== 'boolean' ||
-                typeof options.toggle.order !== 'boolean') {
-                if (typeof this.c.saveState.columns !== 'boolean' && this.c.saveState.columns) {
-                    // Column search toggle - check toggle and saving enabled
-                    if ((
-                    // columns.search is defined when passed in
-                    toggleDefined &&
-                        options.toggle.columns !== undefined &&
-                        typeof options.toggle.columns !== 'boolean' &&
-                        options.toggle.columns.search ||
-                        // Columns search is not defined when passed in but is in defaults
-                        (!toggleDefined ||
-                            options.toggle.columns === undefined ||
-                            typeof options.toggle.columns !== 'boolean' && options.toggle.columns.search === undefined) &&
-                            typeof this.c.toggle.columns !== 'boolean' &&
-                            this.c.toggle.columns.search) &&
-                        this.c.saveState.columns.search) {
-                        togglesToInsert.push(this.dom.columnsSearchToggle);
-                    }
-                    // Column visiblity toggle - check toggle and saving enabled
-                    if ((
-                    // columns.visible is defined when passed in
-                    toggleDefined &&
-                        options.toggle.columns !== undefined &&
-                        typeof options.toggle.columns !== 'boolean' &&
-                        options.toggle.columns.visible ||
-                        // Columns visible is not defined when passed in but is in defaults
-                        (!toggleDefined ||
-                            options.toggle.columns === undefined ||
-                            typeof options.toggle.columns !== 'boolean' && options.toggle.columns.visible === undefined) &&
-                            typeof this.c.toggle.columns !== 'boolean' &&
-                            this.c.toggle.columns.visible) &&
-                        this.c.saveState.columns.visible) {
-                        togglesToInsert.push(this.dom.columnsVisibleToggle);
-                    }
-                }
-                else if (this.c.saveState.columns) {
-                    togglesToInsert.push(this.dom.columnsSearchToggle);
-                    togglesToInsert.push(this.dom.columnsVisibleToggle);
-                }
-            }
-            // Make sure that the toggles are displayed alphabetically
-            togglesToInsert.sort(function (a, b) {
-                var aVal = a.text();
-                var bVal = b.text();
-                if (aVal < bVal) {
-                    return -1;
-                }
-                else if (aVal > bVal) {
-                    return 1;
-                }
-                else {
-                    return 0;
-                }
-            });
-            // Append all of the toggles that are to be inserted
-            var checkboxesEl = this.dom.checkboxInputRow
-                .css('display', togglesToInsert.length ? 'block' : 'none')
-                .appendTo(this.dom.creationForm)
-                .find('div.dtsr-input')
-                .empty();
-            // let checkboxes = $('<div class="'+this.classes.formRow+' '+this.classes.checkRow+'"></div>')
-            // 	.appendTo(this.dom.creationForm);
-            for (var _i = 0, togglesToInsert_1 = togglesToInsert; _i < togglesToInsert_1.length; _i++) {
-                toggle = togglesToInsert_1[_i];
-                checkboxesEl.append(toggle);
-            }
-            // Insert the toggle label next to the first check box
-            // $(this.dom.creationForm.children('div.'+this.classes.checkRow)[0]).prepend(this.dom.toggleLabel);
-            // Insert the creation modal and the background
-            this.dom.background.appendTo(this.dom.dtContainer);
-            this.dom.creation
-                .append(this.dom.creationTitle)
-                .append(this.dom.creationForm)
-                .append(this.dom.createButtonRow)
-                .appendTo(this.dom.dtContainer);
-            $$1(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-            // Allow the label to be clicked to toggle the checkbox
-            for (var _a = 0, togglesToInsert_2 = togglesToInsert; _a < togglesToInsert_2.length; _a++) {
-                toggle = togglesToInsert_2[_a];
-                $$1(toggle.children('label:last-child')).on('click', function () {
-                    toggle.children('input').prop('checked', !toggle.children('input').prop('checked'));
-                });
-            }
-            var creationButton = $$1('button.' + this.classes.creationButton.replace(/ /g, '.'));
-            var inputs = this.dom.creationForm.find('input');
-            // If there is an input focus on that
-            if (inputs.length > 0) {
-                $$1(inputs[0]).focus();
-            }
-            // Otherwise focus on the confirmation button
-            else {
-                creationButton.focus();
-            }
-            var background = $$1('div.' + this.classes.background.replace(/ /g, '.'));
-            var keyupFunction = function (e) {
-                if (e.key === 'Enter') {
-                    creationButton.click();
-                }
-                else if (e.key === 'Escape') {
-                    background.click();
-                }
-            };
-            if (this.c.modalCloseButton) {
-                this.dom.creation.append(this.dom.closeButton);
-                this.dom.closeButton.on('click', function () { return background.click(); });
-            }
-            creationButton.on('click', function () {
-                // Get the values of the checkBoxes
-                var saveState = {
-                    colReorder: _this.dom.colReorderToggle.find('input').is(':checked'),
-                    columns: {
-                        search: _this.dom.columnsSearchToggle.find('input').is(':checked'),
-                        visible: _this.dom.columnsVisibleToggle.find('input').is(':checked')
                     },
-                    length: _this.dom.lengthToggle.find('input').is(':checked'),
-                    order: _this.dom.orderToggle.find('input').is(':checked'),
-                    paging: _this.dom.pagingToggle.find('input').is(':checked'),
-                    scroller: _this.dom.scrollerToggle.find('input').is(':checked'),
-                    search: _this.dom.searchToggle.find('input').is(':checked'),
-                    searchBuilder: _this.dom.searchBuilderToggle.find('input').is(':checked'),
-                    searchPanes: _this.dom.searchPanesToggle.find('input').is(':checked'),
-                    select: _this.dom.selectToggle.find('input').is(':checked')
-                };
-                // Call the buttons functionality passing in the identifier and what should be saved
-                var success = buttonAction($$1('input.' + _this.classes.nameInput.replace(/ /g, '.')).val(), { saveState: saveState });
-                if (success === true) {
-                    // Remove the dom elements as operation has completed
-                    _this.dom.background.remove();
-                    _this.dom.creation.remove();
-                    // Unbind the keyup function  - don't want it to run unnecessarily on every keypress that occurs
-                    $$1(document).unbind('keyup', keyupFunction);
-                }
-                else {
-                    _this.dom.creation.children('.' + _this.classes.modalError).remove();
-                    _this.dom.creation.append(_this.dom[success + 'Error']);
-                }
-            });
-            background.one('click', function () {
-                // Remove the dome elements as operation has been cancelled
-                _this.dom.background.remove();
-                _this.dom.creation.remove();
-                // Unbind the keyup function - don't want it to run unnecessarily on every keypress that occurs
-                $$1(document).unbind('keyup', keyupFunction);
-                // Rebuild the collection to ensure that the latest changes are present
-                _this._collectionRebuild();
-            });
-            // Have to listen to the keyup event as `escape` doesn't trigger keypress
-            $$1(document).on('keyup', keyupFunction);
-            // Need to save the state before the focus is lost when the modal is interacted with
-            this.s.dt.state.save();
-        };
-        /**
-         * Make sure the data for a state contains the expected data types
-         *
-         * @param state State
-         */
-        StateRestoreCollection.prototype._fixTypes = function (state) {
-            var i;
-            if (typeof state === 'string') {
-                state = JSON.parse(state);
-            }
-            var fixNum = function (d, prop) {
-                var val = d[prop];
-                if (val !== undefined) {
-                    d[prop] = typeof val === 'number' ? val : parseInt(val);
-                }
-            };
-            var fixBool = function (d, prop) {
-                var val = d[prop];
-                if (val !== undefined) {
-                    d[prop] = typeof val !== 'string'
-                        ? val
-                        : val === 'true'
-                            ? true
-                            : false;
-                }
-            };
-            fixNum(state, 'start');
-            fixNum(state, 'length');
-            fixNum(state, 'time');
-            if (state.order) {
-                for (i = 0; i < state.order.length; i++) {
-                    // Allow for the fact that column names can be used in index 0
-                    // of the ordering state. If it is a number though, then it
-                    // should be an actual number
-                    if (typeof state.order[i][0] === 'string' &&
-                        state.order[i][0].match(/^\d+$/)) {
-                        fixNum(state.order[i], 0);
+                    error: () => {
+                        host.error('Error in JSON response');
+                        resolve(false);
                     }
+                });
+                DataTable.ajax(options);
+            }
+        });
+        return p;
+    },
+    edit: async function (dt, oldState, newState, host) {
+        let p = new Promise((resolve, reject) => {
+            if (oldState.isStatic) {
+                // Static states don't get sent to the server-side for storage,
+                // so we just need to update the host's storage with the state.
+                if (!oldState.id) {
+                    oldState.id = host.randomId();
                 }
+                host.storeReplace(oldState, newState);
             }
-            if (state.search) {
-                fixBool(state.search, 'caseInsensitive');
-                fixBool(state.search, 'regex');
-                fixBool(state.search, 'smart');
-                fixBool(state.search, 'visible');
-                fixBool(state.search, 'return');
-            }
-            if (state.columns) {
-                for (i = 0; i < state.columns.length; i++) {
-                    fixBool(state.columns[i], 'caseInsensitive');
-                    fixBool(state.columns[i], 'regex');
-                    fixBool(state.columns[i], 'smart');
-                    fixBool(state.columns[i], 'visible');
-                }
-            }
-            if (state.colReorder) {
-                for (i = 0; i < state.colReorder.length; i++) {
-                    fixNum(state.colReorder, i);
-                }
-            }
-            return state;
-        };
-        /**
-         * This callback is called when a state is removed.
-         * This removes the state from storage and also strips it's button from the container
-         *
-         * @param identifier The value that is used to identify a state
-         */
-        StateRestoreCollection.prototype._removeCallback = function (identifier) {
-            for (var i = 0; i < this.s.states.length; i++) {
-                if (this.s.states[i].s.identifier === identifier) {
-                    this.s.states.splice(i, 1);
-                    i--;
-                }
-            }
-            this._collectionRebuild();
-            return true;
-        };
-        /**
-         * Creates a new confirmation modal for the user to approve an action
-         *
-         * @param title The title that is to be displayed at the top of the modal
-         * @param buttonText The text that is to be displayed in the confirmation button of the modal
-         * @param buttonAction The action that should be taken when the confirmation button is pressed
-         * @param modalContents The contents for the main body of the modal
-         */
-        StateRestoreCollection.prototype._newModal = function (title, buttonText, buttonAction, modalContents) {
-            var _this = this;
-            this.dom.background.appendTo(this.dom.dtContainer);
-            this.dom.confirmationTitleRow.empty().append(title);
-            var confirmationButton = $$1('<button class="' + this.classes.confirmationButton + ' ' + this.classes.dtButton + '">' +
-                buttonText +
-                '</button>');
-            this.dom.confirmation
-                .empty()
-                .append(this.dom.confirmationTitleRow)
-                .append(modalContents)
-                .append($$1('<div class="' + this.classes.confirmationButtons + '"></div>')
-                .append(confirmationButton))
-                .appendTo(this.dom.dtContainer);
-            $$1(this.s.dt.table().node()).trigger('dtsr-modal-inserted');
-            var inputs = modalContents.children('input');
-            // If there is an input focus on that
-            if (inputs.length > 0) {
-                $$1(inputs[0]).focus();
-            }
-            // Otherwise focus on the confirmation button
             else {
-                confirmationButton.focus();
-            }
-            var background = $$1('div.' + this.classes.background.replace(/ /g, '.'));
-            if (this.c.modalCloseButton) {
-                this.dom.confirmation.append(this.dom.closeButton);
-                this.dom.closeButton.on('click', function () { return background.click(); });
-            }
-            var keyupFunction = function (e) {
-                // If enter same action as pressing the button
-                if (e.key === 'Enter') {
-                    confirmationButton.click();
-                }
-                // If escape close modal
-                else if (e.key === 'Escape') {
-                    background.click();
-                }
-            };
-            // When the button is clicked, call the appropriate action,
-            // remove the background and modal from the screen and unbind the keyup event.
-            confirmationButton.on('click', function () {
-                var success = buttonAction(true);
-                if (success === true) {
-                    _this.dom.background.remove();
-                    _this.dom.confirmation.remove();
-                    $$1(document).unbind('keyup', keyupFunction);
-                    confirmationButton.off('click');
-                }
-                else {
-                    _this.dom.confirmation.children('.' + _this.classes.modalError).remove();
-                    _this.dom.confirmation.append(_this.dom[success + 'Error']);
-                }
-            });
-            this.dom.confirmation.on('click', function (e) {
-                e.stopPropagation();
-            });
-            // When the button is clicked, remove the background and modal from the screen and unbind the keyup event.
-            background.one('click', function () {
-                _this.dom.background.remove();
-                _this.dom.confirmation.remove();
-                $$1(document).unbind('keyup', keyupFunction);
-            });
-            $$1(document).on('keyup', keyupFunction);
-        };
-        /**
-         * Private method that checks for previously created states on initialisation
-         */
-        StateRestoreCollection.prototype._searchForStates = function () {
-            var _this = this;
-            var keys = Object.keys(localStorage);
-            var _loop_2 = function (key) {
-                // Check if the key belongs to this page / table
-                if (key.startsWith('DataTables_stateRestore_') &&
-                    (key.endsWith(location.pathname) ||
-                        key.endsWith(location.pathname + '_' + this_2.s.dt.table().node().id))) {
-                    var loadedState_1 = JSON.parse(localStorage.getItem(key));
-                    if (loadedState_1.stateRestore.isPreDefined ||
-                        (loadedState_1.stateRestore.tableId &&
-                            loadedState_1.stateRestore.tableId !== this_2.s.dt.table().node().id)) {
-                        return "continue";
+                // Non-static (i.e. user) states, do get sent to the server.
+                let options = util.object.assignDeep({
+                    // Ajax properties that could be overridden
+                    method: 'post',
+                    dataType: 'json',
+                    data: {
+                        action: 'state-edit',
+                        id: oldState.id,
+                        isDefault: newState.isDefault,
+                        isSharedOut: newState.isSharedOut,
+                        name: newState.name,
+                        path: window.location.pathname,
+                        state: JSON.stringify(newState.state),
+                        table: dt.table().node().id
                     }
-                    var that_1 = this_2;
-                    var successCallback = function () {
-                        this.s.savedState = loadedState_1;
-                        that_1.s.states.push(this);
-                        that_1._collectionRebuild();
-                    };
-                    var newState_1 = new StateRestore(this_2.s.dt, $$1.extend(true, {}, this_2.c, { saveState: loadedState_1.c.saveState }), loadedState_1.stateRestore.state, loadedState_1, false, successCallback);
-                    $$1(this_2.s.dt.table().node()).on('dtsr-modal-inserted', function () {
-                        newState_1.dom.confirmation.one('dtsr-remove', function () { return _this._removeCallback(newState_1.s.identifier); });
-                        newState_1.dom.confirmation.one('dtsr-rename', function () { return _this._collectionRebuild(); });
-                        newState_1.dom.confirmation.one('dtsr-save', function () { return _this._collectionRebuild(); });
-                    });
-                }
-            };
-            var this_2 = this;
-            for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
-                var key = keys_1[_i];
-                _loop_2(key);
-            }
-        };
-        StateRestoreCollection.version = '1.0.0';
-        StateRestoreCollection.classes = {
-            background: 'dtsr-background',
-            checkBox: 'dtsr-check-box',
-            checkLabel: 'dtsr-check-label',
-            checkRow: 'dtsr-check-row',
-            closeButton: 'dtsr-popover-close',
-            colReorderToggle: 'dtsr-colReorder-toggle',
-            columnsSearchToggle: 'dtsr-columns-search-toggle',
-            columnsVisibleToggle: 'dtsr-columns-visible-toggle',
-            confirmation: 'dtsr-confirmation',
-            confirmationButton: 'dtsr-confirmation-button',
-            confirmationButtons: 'dtsr-confirmation-buttons',
-            confirmationMessage: 'dtsr-confirmation-message dtsr-name-label',
-            confirmationText: 'dtsr-confirmation-text',
-            confirmationTitle: 'dtsr-confirmation-title',
-            confirmationTitleRow: 'dtsr-confirmation-title-row',
-            creation: 'dtsr-creation',
-            creationButton: 'dtsr-creation-button',
-            creationForm: 'dtsr-creation-form',
-            creationText: 'dtsr-creation-text',
-            creationTitle: 'dtsr-creation-title',
-            dtButton: 'dt-button',
-            emptyStates: 'dtsr-emptyStates',
-            formRow: 'dtsr-form-row',
-            leftSide: 'dtsr-left',
-            lengthToggle: 'dtsr-length-toggle',
-            modalError: 'dtsr-modal-error',
-            modalFoot: 'dtsr-modal-foot',
-            nameInput: 'dtsr-name-input',
-            nameLabel: 'dtsr-name-label',
-            orderToggle: 'dtsr-order-toggle',
-            pagingToggle: 'dtsr-paging-toggle',
-            rightSide: 'dtsr-right',
-            scrollerToggle: 'dtsr-scroller-toggle',
-            searchBuilderToggle: 'dtsr-searchBuilder-toggle',
-            searchPanesToggle: 'dtsr-searchPanes-toggle',
-            searchToggle: 'dtsr-search-toggle',
-            selectToggle: 'dtsr-select-toggle',
-            toggleLabel: 'dtsr-toggle-title'
-        };
-        StateRestoreCollection.defaults = {
-            _createInSaved: false,
-            ajax: false,
-            create: true,
-            creationModal: false,
-            i18n: {
-                creationModal: {
-                    button: 'Create',
-                    colReorder: 'Column Order',
-                    columns: {
-                        search: 'Column Search',
-                        visible: 'Column Visibility'
+                }, host.ajax(), {
+                    // Ajax properties that can't be overridden
+                    success: json => {
+                        if (!json.error &&
+                            json.data &&
+                            json.data.length === 1) {
+                            let state = json.data[0];
+                            // Already JSON
+                            if (typeof state.state === 'object') {
+                                host.storeReplace(oldState, state);
+                                resolve(true);
+                            }
+                            // Or string based
+                            try {
+                                state.state = JSON.parse(state.state);
+                                host.storeReplace(oldState, state);
+                                resolve(true);
+                            }
+                            catch (e) {
+                                resolve(false);
+                            }
+                        }
+                        else {
+                            resolve(false);
+                        }
                     },
-                    length: 'Page Length',
-                    name: 'Name:',
-                    order: 'Sorting',
-                    paging: 'Paging',
-                    scroller: 'Scroll Position',
-                    search: 'Search',
-                    searchBuilder: 'SearchBuilder',
-                    searchPanes: 'SearchPanes',
-                    select: 'Select',
-                    title: 'Create New State',
-                    toggleLabel: 'Include:'
-                },
-                duplicateError: 'A state with this name already exists.',
-                emptyError: 'Name cannot be empty.',
-                emptyStates: 'No saved states',
-                removeConfirm: 'Are you sure you want to remove %s?',
-                removeError: 'Failed to remove state.',
-                removeJoiner: ' and ',
-                removeSubmit: 'Remove',
-                removeTitle: {
-                    1: 'Remove State',
-                    _: 'Remove States'
-                },
-                renameButton: 'Rename',
-                renameLabel: 'New Name for %s:',
-                renameTitle: 'Rename State'
-            },
-            modalCloseButton: true,
-            preDefined: {},
-            remove: true,
-            rename: true,
-            save: true,
-            saveState: {
-                colReorder: true,
-                columns: {
-                    search: true,
-                    visible: true
-                },
-                length: true,
-                order: true,
-                paging: true,
-                scroller: true,
-                search: true,
-                searchBuilder: true,
-                searchPanes: true,
-                select: true
-            },
-            splitSecondaries: [
-                'updateState',
-                'renameState',
-                'removeState'
-            ],
-            toggle: {
-                colReorder: false,
-                columns: {
-                    search: false,
-                    visible: false
-                },
-                length: false,
-                order: false,
-                paging: false,
-                scroller: false,
-                search: false,
-                searchBuilder: false,
-                searchPanes: false,
-                select: false
-            },
-            createButton: null,
-            createState: null
-        };
-        return StateRestoreCollection;
-    }());
+                    error: () => {
+                        host.error('Error in JSON response');
+                        resolve(false);
+                    }
+                });
+                DataTable.ajax(options);
+            }
+        });
+        return p;
+    },
+    remove: async function (dt, states, host) {
+        let p = new Promise((resolve, reject) => {
+            // Can only deleted "owned" states
+            let ids = states
+                .filter(s => !s.isStatic && !s.isSharedIn)
+                .map(s => s.id);
+            if (ids.length) {
+                let options = util.object.assignDeep({
+                    // Ajax properties that could be overridden
+                    method: 'post',
+                    dataType: 'json',
+                    data: {
+                        action: 'state-remove',
+                        ids: ids,
+                        path: window.location.pathname,
+                        table: dt.table().node().id
+                    }
+                }, host.ajax(), {
+                    // Ajax properties that can't be overridden
+                    success: json => {
+                        if (!json.error) {
+                            ids.forEach(id => {
+                                let state = states.find(s => s.id === id);
+                                if (state) {
+                                    host.storeRemove(state);
+                                }
+                            });
+                        }
+                        else {
+                            host.error(json.error);
+                        }
+                        resolve(true);
+                    },
+                    error: () => {
+                        host.error('Error in JSON response');
+                        resolve(false);
+                    }
+                });
+                DataTable.ajax(options);
+            }
+        });
+        return p;
+    }
+};
 
-    /*! StateRestore 1.5.0-dev
-     * © SpryMedia Ltd - datatables.net/license
-     */
-    setJQuery$1($);
-    setJQuery($);
-    $.fn.dataTable.StateRestore = StateRestore;
-    $.fn.DataTable.StateRestore = StateRestore;
-    $.fn.dataTable.StateRestoreCollection = StateRestoreCollection;
-    $.fn.DataTable.StateRestoreCollection = StateRestoreCollection;
-    var apiRegister = DataTable.Api.register;
-    apiRegister('stateRestore()', function () {
-        return this;
-    });
-    apiRegister('stateRestore.state()', function (identifier) {
-        var ctx = this.context[0];
-        if (!ctx._stateRestore) {
-            var api = DataTable.Api(ctx);
-            var src = new DataTable.StateRestoreCollection(api, {});
-            _stateRegen(api, src);
-        }
-        this[0] = ctx._stateRestore.getState(identifier);
-        return this;
-    });
-    apiRegister('stateRestore.state.add()', function (identifier, options) {
-        var ctx = this.context[0];
-        if (!ctx._stateRestore) {
-            var api = DataTable.Api(ctx);
-            var src = new DataTable.StateRestoreCollection(api, {});
-            _stateRegen(api, src);
-        }
-        if (!ctx._stateRestore.c.create) {
-            return this;
-        }
-        if (ctx._stateRestore.addState) {
-            var states = ctx._stateRestore.s.states;
-            var ids = [];
-            for (var _i = 0, states_1 = states; _i < states_1.length; _i++) {
-                var intState = states_1[_i];
-                ids.push(intState.s.identifier);
+function localStorageName(dt) {
+    return 'dtsr-' + location.pathname + '-' + dt.table().node().id;
+}
+/**
+ * localStorage base for StateRestore. Really basic, the write actions just
+ * write all states to the store.
+ */
+const local = {
+    read: async function (dt) {
+        let name = localStorageName(dt);
+        let stored = localStorage.getItem(name);
+        if (stored) {
+            try {
+                return JSON.parse(stored);
             }
-            ctx._stateRestore.addState(identifier, ids, options);
-            return this;
-        }
-    });
-    apiRegister('stateRestore.states()', function (ids) {
-        var ctx = this.context[0];
-        if (!ctx._stateRestore) {
-            var api = DataTable.Api(ctx);
-            var src = new DataTable.StateRestoreCollection(api, {});
-            _stateRegen(api, src);
-        }
-        this.length = 0;
-        this.push.apply(this, ctx._stateRestore.getStates(ids));
-        return this;
-    });
-    apiRegister('stateRestore.state().save()', function () {
-        var ctx = this[0];
-        // Check if saving states is allowed
-        if (ctx.c.save) {
-            ctx.save();
-        }
-        return this;
-    });
-    apiRegister('stateRestore.state().rename()', function (newIdentifier) {
-        var ctx = this.context[0];
-        var state = this[0];
-        // Check if renaming states is allowed
-        if (state.c.save) {
-            var states = ctx._stateRestore.s.states;
-            var ids = [];
-            for (var _i = 0, states_2 = states; _i < states_2.length; _i++) {
-                var intState = states_2[_i];
-                ids.push(intState.s.identifier);
+            catch (e) {
+                return [];
             }
-            state.rename(newIdentifier, ids);
         }
-        return this;
-    });
-    apiRegister('stateRestore.state().load()', function () {
-        var ctx = this[0];
-        ctx.load();
-        return this;
-    });
-    apiRegister('stateRestore.state().remove()', function (skipModal) {
-        var ctx = this[0];
-        // Check if removal of states is allowed
-        if (ctx.c.remove) {
-            ctx.remove(skipModal);
-        }
-        return this;
-    });
-    apiRegister('stateRestore.states().remove()', function (skipModal) {
-        var _this = this;
-        var removeAllCallBack = function (skipModalIn) {
-            var success = true;
-            var that = _this.toArray();
-            while (that.length > 0) {
-                var set = that[0];
-                if (set !== undefined && set.c.remove) {
-                    var tempSuccess = set.remove(skipModalIn);
-                    if (tempSuccess !== true) {
-                        success = tempSuccess;
-                    }
-                    else {
-                        // Remove from local list
-                        that.splice(0, 1);
-                        // And remove from SR
-                        _this.context[0]._stateRestore._removeCallback(set.s.identifier);
-                    }
+        // v1 compatibility - check if there are states from v1
+        let states = [];
+        var keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            // Check if the key belongs to this page / table
+            if (key.startsWith('DataTables_stateRestore_') &&
+                (key.endsWith(location.pathname) ||
+                    key.endsWith(location.pathname + '_' + dt.table().node().id))) {
+                try {
+                    let loadedState = JSON.parse(localStorage.getItem(key));
+                    states.push({
+                        id: null,
+                        isDefault: false,
+                        isSharedIn: false,
+                        isSharedOut: false,
+                        isStatic: false,
+                        name: key
+                            .replace(/^DataTables_stateRestore_/, '')
+                            .replace(location.pathname, ''),
+                        state: loadedState
+                    });
                 }
-                else {
-                    break;
+                catch (e) {
+                    // noop
                 }
             }
-            return success;
-        };
-        if (this.context[0]._stateRestore && this.context[0]._stateRestore.c.remove) {
-            if (skipModal) {
-                removeAllCallBack(skipModal);
-            }
-            else {
-                this.context[0]._stateRestore.removeAll(removeAllCallBack);
-            }
+        });
+        return states;
+    },
+    create: async function (dt, state, host) {
+        if (!state.id) {
+            // Create a random uid to act as the id for a local state
+            state.id = host.randomId();
         }
-        return this;
-    });
-    apiRegister('stateRestore.activeStates()', function () {
-        var ctx = this.context[0];
-        this.length = 0;
-        if (!ctx._stateRestore) {
-            var api = DataTable.Api(ctx);
-            var src = new DataTable.StateRestoreCollection(api, {});
-            _stateRegen(api, src);
+        host.storeAdd(state);
+        localStorage.setItem(localStorageName(dt), JSON.stringify(host.storeGet()));
+        return true;
+    },
+    edit: async function (dt, oldState, newState, host) {
+        host.storeReplace(oldState, newState);
+        if (!oldState.isStatic) {
+            localStorage.setItem(localStorageName(dt), JSON.stringify(host.storeGet()));
         }
-        if (ctx._stateRestore) {
-            this.push.apply(this, ctx._stateRestore.findActive());
+        return true;
+    },
+    remove: async function (dt, states, host) {
+        for (let i = 0; i < states.length; i++) {
+            host.storeRemove(states[i]);
         }
-        return this;
-    });
-    DataTable.ext.buttons.stateRestore = {
-        action: function (e, dt, node, config) {
-            config._stateRestore.load();
-            node.blur();
-        },
-        className: 'dtsr-state',
-        config: {
-            split: ['updateState', 'renameState', 'removeState']
-        },
-        text: function (dt) {
-            return dt.i18n('buttons.stateRestore', 'State %d', dt.stateRestore.states()[0].length + 1);
-        }
-    };
-    DataTable.ext.buttons.updateState = {
-        action: function (e, dt, node, config) {
-            $('div.dt-button-background').click();
-            config.parent._stateRestore.save();
-        },
-        text: function (dt) {
-            return dt.i18n('buttons.updateState', 'Update');
-        }
-    };
-    DataTable.ext.buttons.savedStates = {
-        buttons: [],
-        extend: 'collection',
-        init: function (dt, node, config) {
-            dt.on('stateRestore-change', function () {
-                dt.button(node).text(dt.i18n('buttons.savedStates', 'Saved States', dt.stateRestore.states().length));
-            });
-            if (dt.settings()[0]._stateRestore === undefined) {
-                _buttonInit(dt, config);
-            }
-        },
-        name: 'SaveStateRestore',
-        text: function (dt) {
-            return dt.i18n('buttons.savedStates', 'Saved States', 0);
-        }
-    };
-    DataTable.ext.buttons.savedStatesCreate = {
-        buttons: [],
-        extend: 'collection',
-        init: function (dt, node, config) {
-            dt.on('stateRestore-change', function () {
-                dt.button(node).text(dt.i18n('buttons.savedStates', 'Saved States', dt.stateRestore.states().length));
-            });
-            if (dt.settings()[0]._stateRestore === undefined) {
-                if (config.config === undefined) {
-                    config.config = {};
-                }
-                config.config._createInSaved = true;
-                _buttonInit(dt, config);
-            }
-        },
-        name: 'SaveStateRestore',
-        text: function (dt) {
-            return dt.i18n('buttons.savedStates', 'Saved States', 0);
-        }
-    };
-    DataTable.ext.buttons.createState = {
-        action: function (e, dt, node, config) {
+        localStorage.setItem(localStorageName(dt), JSON.stringify(host.storeGet()));
+        return true;
+    }
+};
+
+// Sanity check
+if (!DataTable || !DataTable.versionCheck || !DataTable.versionCheck('3')) {
+    throw 'DataTables StateRestore requires DataTables 3 or newer';
+}
+const _modal = Dom.c('div').classAdd('dtsb-modal');
+const _modalCloseButton = Dom.c('button')
+    .classAdd('dtsb-modal-close')
+    .attr('type', 'button')
+    .html('&times;');
+const _modalBackground = Dom.c('div').classAdd('dtsb-modal-background');
+class States {
+    static modalClean() {
+        Dom.s(document).off('keyup.dtsr');
+        _modal.empty().classRemove(States.classes.modal.table);
+        _modalCloseButton.off('click');
+        _modalBackground.off('click');
+    }
+    static modalClose() {
+        _modal.remove();
+        _modalBackground.remove();
+    }
+    static modal(title, body, className, close) {
+        _modal.classAdd(className);
+        _modalCloseButton.on('click', () => {
+            close();
+        });
+        // Esc will close and cancel the modal
+        Dom.s(document).on('keyup.dtsr', e => {
             e.stopPropagation();
-            var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
-            var language = dt.settings()[0].oLanguage;
-            // If creation/saving is not allowed then return
-            if (!stateRestoreOpts.create || !stateRestoreOpts.save) {
-                return;
+            if (e.keyCode === 27) {
+                close();
             }
-            var prevStates = dt.stateRestore.states().toArray();
-            // Create a replacement regex based on the i18n values
-            var defaultString = language.buttons !== undefined && language.buttons.stateRestore !== undefined ?
-                language.buttons.stateRestore :
-                'State ';
-            var replaceRegex;
-            if (defaultString.indexOf('%d') === defaultString.length - 3) {
-                replaceRegex = new RegExp(defaultString.replace(/%d/g, ''));
-            }
-            else {
-                var splitString = defaultString.split('%d');
-                replaceRegex = [];
-                for (var _i = 0, splitString_1 = splitString; _i < splitString_1.length; _i++) {
-                    var parts = splitString_1[_i];
-                    replaceRegex.push(new RegExp(parts));
-                }
-            }
-            var getId = function (identifier) {
-                var id;
-                if (Array.isArray(replaceRegex)) {
-                    id = identifier;
-                    for (var _i = 0, replaceRegex_1 = replaceRegex; _i < replaceRegex_1.length; _i++) {
-                        var reg = replaceRegex_1[_i];
-                        id = id.replace(reg, '');
-                    }
-                }
-                else {
-                    id = identifier.replace(replaceRegex, '');
-                }
-                // If the id after replacement is not a number, or the length is the same as before,
-                //  it has been customised so return 0
-                if (isNaN(+id) || id.length === identifier) {
-                    return 0;
-                }
-                // Otherwise return the number that has been assigned previously
-                else {
-                    return +id;
-                }
-            };
-            // Extract the numbers from the identifiers that use the standard naming convention
-            var identifiers = prevStates
-                .map(function (state) { return getId(state.s.identifier); })
-                .sort(function (a, b) { return +a < +b ?
-                1 :
-                +a > +b ?
-                    -1 :
-                    0; });
-            var lastNumber = identifiers[0];
-            dt.stateRestore.state.add(dt.i18n('buttons.stateRestore', 'State %d', lastNumber !== undefined ? lastNumber + 1 : 1), config.config);
-            var states = dt.stateRestore.states().sort(function (a, b) {
-                var aId = +getId(a.s.identifier);
-                var bId = +getId(b.s.identifier);
-                return aId > bId ?
-                    1 :
-                    aId < bId ?
-                        -1 :
-                        0;
-            });
-            var button = dt.button('SaveStateRestore:name');
-            var buttonIndex = parseInt(button.index());
-            var stateButtons = button[0] !== undefined && button[0].inst.c.buttons[buttonIndex].buttons !== undefined ?
-                button[0].inst.c.buttons[buttonIndex].buttons :
-                [];
-            // remove any states from the previous rebuild - if they are still there they will be added later
-            for (var i = 0; i < stateButtons.length; i++) {
-                if (stateButtons[i].extend === 'stateRestore') {
-                    stateButtons.splice(i, 1);
-                    i--;
-                }
-            }
-            if (stateRestoreOpts._createInSaved) {
-                stateButtons.push('createState');
-            }
-            for (var _a = 0, states_3 = states; _a < states_3.length; _a++) {
-                var state = states_3[_a];
-                var split = stateRestoreOpts.splitSecondaries.slice();
-                if (split.includes('updateState') && !stateRestoreOpts.save) {
-                    split.splice(split.indexOf('updateState'), 1);
-                }
-                if (split.includes('renameState') &&
-                    (!stateRestoreOpts.save || !stateRestoreOpts.rename)) {
-                    split.splice(split.indexOf('renameState'), 1);
-                }
-                if (split.includes('removeState') && !stateRestoreOpts.remove) {
-                    split.splice(split.indexOf('removeState'), 1);
-                }
-                stateButtons.push({
-                    _stateRestore: state,
-                    attr: {
-                        title: state.s.identifier
-                    },
-                    config: {
-                        split: split
-                    },
-                    extend: 'stateRestore',
-                    text: StateRestore.entityEncode(state.s.identifier),
-                    popoverTitle: StateRestore.entityEncode(state.s.identifier)
-                });
-            }
-            dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
-            node.blur();
-            // Need to disable the removeAllStates button if there are no states and it is present
-            var buttons = dt.buttons();
-            for (var _b = 0, buttons_1 = buttons; _b < buttons_1.length; _b++) {
-                var butt = buttons_1[_b];
-                if ($(butt.node).hasClass('dtsr-removeAllStates')) {
-                    if (states.length === 0) {
-                        dt.button(butt.node).disable();
-                    }
-                    else {
-                        dt.button(butt.node).enable();
-                    }
-                }
-            }
-        },
-        init: function (dt, node, config) {
-            if (dt.settings()[0]._stateRestore === undefined && dt.button('SaveStateRestore:name').length > 1) {
-                _buttonInit(dt, config);
-            }
-        },
-        text: function (dt) {
-            return dt.i18n('buttons.createState', 'Create State');
-        }
-    };
-    DataTable.ext.buttons.removeState = {
-        action: function (e, dt, node, config) {
-            config.parent._stateRestore.remove();
-            node.blur();
-        },
-        text: function (dt) {
-            return dt.i18n('buttons.removeState', 'Remove');
-        }
-    };
-    DataTable.ext.buttons.removeAllStates = {
-        action: function (e, dt, node, config) {
-            dt.stateRestore.states().remove(!config.confirmModal);
-            node.blur();
-        },
-        className: 'dt-button dtsr-removeAllStates',
-        confirmModal: true,
-        init: function (dt, node) {
-            if (!dt.settings()[0]._stateRestore || dt.stateRestore.states().length === 0) {
-                $(node).addClass('disabled');
-            }
-        },
-        text: function (dt) {
-            return dt.i18n('buttons.removeAllStates', 'Remove All States');
-        }
-    };
-    DataTable.ext.buttons.renameState = {
-        action: function (e, dt, node, config) {
-            var states = dt.settings()[0]._stateRestore.s.states;
-            var ids = [];
-            for (var _i = 0, states_4 = states; _i < states_4.length; _i++) {
-                var state = states_4[_i];
-                ids.push(state.s.identifier);
-            }
-            config.parent._stateRestore.rename(undefined, ids);
-            node.blur();
-        },
-        text: function (dt) {
-            return dt.i18n('buttons.renameState', 'Rename');
-        }
-    };
-    function _init(settings, options) {
-        if (options === void 0) { options = null; }
-        var api = new DataTable.Api(settings);
-        var opts = options
-            ? options
-            : api.init().stateRestore || DataTable.defaults.stateRestore;
-        var stateRestore = new StateRestoreCollection(api, opts);
-        _stateRegen(api, stateRestore);
-        return stateRestore;
+        });
+        _modal
+            .append(Dom.c('div')
+            .classAdd('dtsb-modal-header')
+            .text(title)
+            .append(_modalCloseButton))
+            .append(Dom.c('div').classAdd('dtsb-modal-body').append(body))
+            .appendTo('body');
+        _modalBackground
+            .on('click', () => {
+            close();
+        })
+            .appendTo('body');
+        // Initial focus
+        _modal
+            .find('input, button')
+            .filter(':not(.dtsb-modal-close)')
+            .eq(0)
+            .focus();
     }
-    /**
-     * Initialisation function if initialising using a button
-     *
-     * @param dt The datatables instance
-     * @param config the config for the button
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * Public methods
      */
-    function _buttonInit(dt, config) {
-        var SRC = new DataTable.StateRestoreCollection(dt, config.config);
-        _stateRegen(dt, SRC);
-    }
-    function _stateRegen(dt, src) {
-        var states = dt.stateRestore.states();
-        var button = dt.button('SaveStateRestore:name');
-        var stateButtons = [];
-        var i;
-        // Need to get the original configuration object, so we can rebuild it
-        // It might be nested, so need to traverse down the tree
-        if (button[0]) {
-            var idxs = button.index().split('-');
-            stateButtons = button[0].inst.c.buttons;
-            for (i = 0; i < idxs.length; i++) {
-                if (stateButtons[idxs[i]].buttons) {
-                    stateButtons = stateButtons[idxs[i]].buttons;
-                }
-                else {
-                    stateButtons = [];
-                    break;
-                }
-            }
-        }
-        var stateRestoreOpts = dt.settings()[0]._stateRestore.c;
-        // remove any states from the previous rebuild - if they are still there they will be added later
-        for (i = 0; i < stateButtons.length; i++) {
-            if (stateButtons[i].extend === 'stateRestore') {
-                stateButtons.splice(i, 1);
-                i--;
-            }
-        }
-        if (stateRestoreOpts._createInSaved) {
-            stateButtons.push('createState');
-        }
-        if (states === undefined || states.length === 0) {
-            stateButtons.push('<span class="' + src.classes.emptyStates + '">' +
-                dt.i18n('stateRestore.emptyStates', src.c.i18n.emptyStates) +
-                '</span>');
+    /**
+     * Add a new state to the collection but taking the state object to be saved
+     * (this will most likely come from `table.state()`), showing a modal to
+     * allow customisation of it (name and which properties to include), then
+     * eventually adding it to the collection.
+     *
+     * @param state DataTables state to save
+     * @param name New name
+     */
+    add(state, newName = null, isStatic = false, isDefault = false) {
+        if (isStatic) {
+            this.s.store.push({
+                id: null,
+                isDefault,
+                isSharedIn: false,
+                isSharedOut: false,
+                isStatic,
+                name: newName || this._nextName(),
+                state
+            });
         }
         else {
-            for (var _i = 0, states_5 = states; _i < states_5.length; _i++) {
-                var state = states_5[_i];
-                var split = stateRestoreOpts.splitSecondaries.slice();
-                if (split.includes('updateState') && !stateRestoreOpts.save) {
-                    split.splice(split.indexOf('updateState'), 1);
+            if (!this.c.canCreate) {
+                return;
+            }
+            this._stateUserInput(this.s.dt.i18n('stateRestore.create.title', 'Save new state'), this.s.dt.i18n('stateRestore.create.info', ''), {
+                id: null,
+                isDefault,
+                isSharedIn: false,
+                isSharedOut: false,
+                isStatic,
+                name: newName || this._nextName(),
+                state
+            }, async (state) => {
+                let result = await this.s.storage.create(this.s.dt, state, this);
+                if (result) {
+                    this.s.dt.trigger('stateRestore', ['create', state]);
+                    this.modalClose();
                 }
-                if (split.includes('renameState') &&
-                    (!stateRestoreOpts.save || !stateRestoreOpts.rename)) {
-                    split.splice(split.indexOf('renameState'), 1);
+            });
+        }
+    }
+    /**
+     * Get the base Ajax configuration
+     *
+     * @returns Ajax configuration object
+     */
+    ajax() {
+        return typeof this.c.ajax === 'string'
+            ? {
+                url: this.c.ajax
+            }
+            : this.c.ajax;
+    }
+    /**
+     * Is an end user allowed to perform a particular action
+     *
+     * @returns Flag
+     */
+    can(action) {
+        switch (action) {
+            case 'create':
+                return this.c.canCreate;
+            case 'default':
+                return this.c.defaults;
+            case 'share':
+                return this.c.sharing;
+            default:
+                return false;
+        }
+    }
+    /**
+     * Get the default state
+     *
+     * @returns DataTables state object
+     */
+    getDefault() {
+        let state = this.s.store.find(s => s.isDefault);
+        return state ? state.state : null;
+    }
+    /**
+     * Check if a state is currently displayed. Note that a state is considered
+     * to be active if its properties match those for the current state, however
+     * it is not bidirectional - a current state could have additional
+     * properties added to it (e.g. a new extension added) and they would not
+     * be checked.
+     *
+     * @param state The state object to check
+     */
+    isCurrent(state) {
+        // DataTables caches this, so it isn't an expensive call
+        let currentState = this.s.dt.state();
+        let keys = Object.keys(state);
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            // Ignore time
+            if (key === 'time') {
+                continue;
+            }
+            if (!this._isEqual(state[key], currentState[key])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    /**
+     * Execute a function once the states have been loaded (allowing async
+     * loading)
+     *
+     * @param cb Function to execute
+     */
+    loaded(cb) {
+        if (this.s.loading) {
+            this.s.whenLoaded.push(cb);
+        }
+        else {
+            cb();
+        }
+    }
+    /**
+     * Edit a state's properties. Can be used to replace a state if a new state
+     * object is passed in with the `state` property set.
+     *
+     * @param oldState State object to update
+     */
+    edit(oldState, newState, skipModal = false) {
+        let idx = this.s.store.indexOf(oldState);
+        if (idx !== -1) {
+            // We need a copy of the object, in case it is rejected by an error
+            // - i.e. we don't want to mutate the original object.
+            let copy = util.object.assignDeep({}, oldState);
+            let title = this.s.dt.i18n('stateRestore.edit.title', 'Edit state');
+            let info = this.s.dt.i18n('stateRestore.edit.info', '');
+            if (newState && newState.state) {
+                title = this.s.dt.i18n('stateRestore.replace.title', 'Replace state');
+                info = this.s.dt.i18n('stateRestore.replace.info', "Replace the currently saved state with the table's current state.");
+            }
+            // Shallow copy to allow partial input
+            util.object.assign(copy, newState);
+            this._stateUserInput(title, info, copy, async (state) => {
+                let result = await this.s.storage.edit(this.s.dt, oldState, state, this);
+                if (result) {
+                    this.s.dt.trigger('stateRestore', ['edit', state]);
+                    this.modalClose();
                 }
-                if (split.includes('removeState') && !stateRestoreOpts.remove) {
-                    split.splice(split.indexOf('removeState'), 1);
+            });
+        }
+    }
+    /**
+     * Error message to display
+     *
+     * @param msg
+     */
+    error(msg) {
+        alert(msg);
+    }
+    /**
+     * Display a modal, allowing for layering, so a modal can have an action
+     * that will display an "inner" modal, but uses the same modal display,
+     * and then allows it to be returned to.
+     *
+     * @param title Modal title
+     * @param body Element to show in the modal body
+     * @param wide Indicate if the modal should be wide
+     */
+    modal(title, body, wide = false) {
+        // Add the modal to the layers, so we can restore to it if needed
+        this.s.modalLayers.push({
+            title,
+            body,
+            wide
+        });
+        // Tidy any existing modal
+        States.modalClean();
+        // And display
+        States.modal(title, body, wide ? this.classes.modal.table : this.classes.modal.form, () => {
+            this.modalClose();
+        });
+    }
+    /**
+     * Close a modal and if there are any layered above it, display them.
+     */
+    modalClose() {
+        // Tidy up from the last modal
+        States.modalClean();
+        // Pop off the last state
+        this.s.modalLayers.pop();
+        // And if there are any left, then we need to display them again
+        if (this.s.modalLayers.length) {
+            let layer = this.s.modalLayers[this.s.modalLayers.length - 1];
+            States.modal(layer.title, layer.body, layer.wide ? this.classes.modal.table : '', () => {
+                this.modalClose();
+            });
+        }
+        else {
+            // Otherwise we close it off
+            States.modalClose();
+        }
+    }
+    /**
+     * Get a random ID for client-side states
+     *
+     * @returns A random ID
+     */
+    randomId() {
+        return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+    }
+    /**
+     * Remove a state from the store
+     *
+     * @param state State object(s) to remove
+     */
+    remove(stateIn, skipConfirm = false) {
+        let states = Array.isArray(stateIn) ? stateIn : [stateIn];
+        if (states.length === 0) {
+            return;
+        }
+        else if (skipConfirm) {
+            this.s.storage.remove(this.s.dt, states, this);
+        }
+        else {
+            let body = Dom.c('div')
+                .classAdd(this.classes.removeMessage)
+                .text(this.s.dt.i18n('stateRestore.remove.message', {
+                _: 'Are you sure you wish to remove the following states:',
+                1: 'Are you sure you wish to remove the following state:'
+            }, states.length));
+            let form = Dom.c('form').appendTo(body);
+            let ul = Dom.c('ul').appendTo(form);
+            states.forEach(s => {
+                ul.append(Dom.c('li').text(s.name));
+            });
+            form.append(this._submitButton(this.s.dt.i18n('stateRestore.remove.button', 'Delete')));
+            // Event handler for the submission
+            form.on('submit', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                let result = await this.s.storage.remove(this.s.dt, states, this);
+                if (result) {
+                    this.s.dt.trigger('stateRestore', ['remove']);
+                    this.modalClose();
                 }
-                stateButtons.push({
-                    _stateRestore: state,
-                    attr: {
-                        title: state.s.identifier
-                    },
-                    config: {
-                        split: split
-                    },
-                    extend: 'stateRestore',
-                    text: StateRestore.entityEncode(state.s.identifier),
-                    popoverTitle: StateRestore.entityEncode(state.s.identifier)
+            });
+            this.modal(this.s.dt.i18n('stateRestore.title.remove', 'Delete state'), body);
+        }
+    }
+    /**
+     * Get the states stored for this table / instance
+     *
+     * @param includeStatics Indicate if static states should be included or not
+     * @returns Array of states
+     */
+    storeGet(includeStatics = false) {
+        if (includeStatics) {
+            return this.s.store;
+        }
+        return this.s.store.filter(s => !s.isStatic);
+    }
+    /**
+     * Add a new state to the store
+     *
+     * @param state To add
+     */
+    storeAdd(state) {
+        this.s.store.push(state);
+    }
+    /**
+     * Remove a state from the store
+     *
+     * @param state To remove
+     * @returns Void
+     */
+    storeRemove(state) {
+        let store = this.s.store;
+        let idx = store.indexOf(state);
+        if (state.isStatic) {
+            return;
+        }
+        if (idx !== -1) {
+            store.splice(idx, 1);
+        }
+    }
+    storeReplace(oldState, newState) {
+        let store = this.s.store;
+        let idx = store.indexOf(oldState);
+        if (oldState.isStatic) {
+            return;
+        }
+        if (idx !== -1) {
+            store.splice(idx, 1, newState);
+        }
+    }
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * Constructor
+     */
+    constructor(host) {
+        let dt = new DataTable.Api(host);
+        let opts = dt.init().stateRestore;
+        DataTable.plus('2026-09-11');
+        this.c = util.object.assignDeep({}, States.defaults, DataTable.defaults.stateRestore, opts);
+        // Defaults can only be used if `stateRestore` is in the initialisation
+        // options (as that will add the state loader - it won't work without
+        // it!)
+        if (!opts) {
+            this.c.defaults = false;
+        }
+        // Sharing is only relevant if there is Ajax, since otherwise there is
+        // no way to states!
+        if (!this.c.ajax) {
+            this.c.sharing = false;
+        }
+        // Allow the new state name to be defined from the language object
+        if (!this.c.newName) {
+            this.c.newName = dt.i18n('stateRestore.newName', 'State #');
+        }
+        this.s = {
+            dt: dt,
+            loading: false,
+            modalLayers: [],
+            store: [],
+            storage: this.c.ajax ? ajax : local,
+            whenLoaded: []
+        };
+        this.classes = util.object.assignDeep({}, States.classes);
+        let settings = this.s.dt.settings()[0];
+        // Check if StateRestore has already been initialised on this table
+        if (settings._states) {
+            return;
+        }
+        settings._states = this;
+        // Add predefined states to the list
+        this._addPredefined(this.c.predefined);
+        this.s.dt.on('xhr.dtsr', (e, s, json) => {
+            if (json && json.stateRestore) {
+                this._addPredefined(json.stateRestore);
+            }
+        });
+        // Initial startup actions
+        this._load();
+    }
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * Private methods
+     */
+    /**
+     * Add predefined states to the list
+     *
+     * @param predefined Array of states, or object of states
+     */
+    async _addPredefined(predefined) {
+        if (Array.isArray(predefined)) {
+            predefined.forEach(s => {
+                this.add(s.state, s.name, true, s.isDefault || false);
+            });
+        }
+        else {
+            // Legacy support - v1 used objects keyed by the state name
+            Object.keys(predefined).forEach(k => {
+                this.add(predefined[k], k, true, false);
+            });
+        }
+    }
+    /**
+     * Load states and execute callbacks from `loaded()` when done
+     */
+    async _load() {
+        this.s.loading = true;
+        // Get the initial states
+        let restore = await this.s.storage.read(this.s.dt, this);
+        this.s.store.push(...restore);
+        this.s.loading = false;
+        this.s.dt.trigger('stateRestore', ['loaded']);
+        // Execute callbacks
+        this.s.whenLoaded.forEach(w => w());
+        this.s.whenLoaded.length = 0;
+    }
+    /**
+     * Display an editing field
+     *
+     * @param label Field label
+     * @param info Extra field details
+     * @param name Name for the input
+     * @param value Value for the input
+     * @param type Input type
+     * @returns The DOM instance containing the element
+     */
+    _field(label, info, name, value, type = 'text') {
+        let classes = this.classes.field;
+        let field = Dom.c('div').classAdd(classes.container);
+        Dom.c('label')
+            .attr('for', 'dtsr-' + name)
+            .classAdd(classes.label)
+            .text(label)
+            .appendTo(field);
+        let inputContainer = Dom.c('div')
+            .classAdd(classes.value)
+            .appendTo(field);
+        if (type === 'text') {
+            Dom.c('input')
+                .attr('id', 'dtsr-' + name)
+                .attr('type', 'text')
+                .attr('name', name)
+                .attr('autocomplete', 'off')
+                .val(value)
+                .classAdd(classes.input.text)
+                .appendTo(inputContainer);
+        }
+        else if (type === 'checkbox') {
+            Dom.c('input')
+                .attr('id', 'dtsr-' + name)
+                .attr('type', 'checkbox')
+                .attr('name', name)
+                .prop('checked', value)
+                .classAdd(classes.input.checkbox)
+                .appendTo(inputContainer);
+        }
+        if (info) {
+            Dom.c('div')
+                .classAdd(classes.info)
+                .text(info)
+                .appendTo(inputContainer);
+        }
+        Dom.c('div').classAdd(classes.error).appendTo(inputContainer);
+        return field;
+    }
+    /**
+     * Display a field with checkboxes
+     *
+     * @param label Field label
+     * @param checkboxes Checkboxes for the field
+     * @returns The DOM instance containing the element
+     */
+    _fieldCheckboxes(label, checkboxes) {
+        let classes = this.classes.field;
+        let field = Dom.c('div').classAdd(classes.container);
+        Dom.c('label').classAdd(classes.label).text(label).appendTo(field);
+        let inputContainer = Dom.c('div')
+            .classAdd(classes.value)
+            .appendTo(field);
+        checkboxes.forEach((checkbox, i) => {
+            Dom.c('div')
+                .classAdd(this.classes.field.checkboxOption)
+                .appendTo(inputContainer)
+                .append(Dom.c('input')
+                .attr('type', 'checkbox')
+                .attr('id', checkbox.name)
+                .attr('name', checkbox.name)
+                .prop('checked', checkbox.value)
+                .classAdd(classes.input.checkbox)
+                .appendTo(inputContainer))
+                .append(Dom.c('label')
+                .text(checkbox.label)
+                .attr('for', checkbox.name));
+        });
+        return field;
+    }
+    /**
+     * Check values to see if they are equal
+     *
+     * @param a First value
+     * @param b Second value
+     * @returns true if equal, false otherwise
+     */
+    _isEqual(a, b) {
+        // Handles primitives, identical references, and NaN === NaN
+        if (Object.is(a, b)) {
+            return true;
+        }
+        // If either isn't an object (or is null), they aren't equal
+        if (typeof a !== 'object' ||
+            a === null ||
+            typeof b !== 'object' ||
+            b === null) {
+            return false;
+        }
+        // Ensure both are arrays or both are standard objects
+        if (Array.isArray(a) !== Array.isArray(b)) {
+            return false;
+        }
+        const keysA = Object.keys(a);
+        // Recursively compare each key/value pair
+        for (const key of keysA) {
+            if (!Object.prototype.hasOwnProperty.call(b, key) ||
+                !this._isEqual(a[key], b[key])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    /**
+     * Determine the default name for the next state (used when creating a new
+     * state).
+     *
+     * @returns New name
+     */
+    _nextName() {
+        let matcher = new RegExp('^' + this.c.newName.replace('#', '(\\d?)') + '$');
+        let found = [];
+        this.s.store.forEach(state => {
+            let match = state.name.match(matcher);
+            if (match && match[1]) {
+                found.push(parseInt(match[1]));
+            }
+        });
+        found.sort((a, b) => b - a);
+        let next = !found.length ? '1' : (found[0] + 1).toString();
+        return this.c.newName.replace('#', next);
+    }
+    /**
+     * Show a modal to get the user's options for this state
+     */
+    _stateUserInput(title, info, state, cb) {
+        let body = Dom.c('div');
+        let form = Dom.c('form').classAdd(this.classes.form).appendTo(body);
+        let dt = this.s.dt;
+        if (info) {
+            form.append(Dom.c('p').text(info));
+        }
+        form.append(this._field(dt.i18n('stateRestore.state.name', 'Name:'), dt.i18n('stateRestore.state.nameInfo', ''), 'name', state.name));
+        if (this.c.defaults) {
+            form.append(this._field(dt.i18n('stateRestore.state.defaults', 'Default:'), dt.i18n('stateRestore.state.defaultsInfo', 'The state that is selected as the default will be used automatically when the page is loaded.'), 'default', state.isDefault, 'checkbox'));
+        }
+        if (this.c.sharing) {
+            form.append(this._field(dt.i18n('stateRestore.state.share', 'Share:'), dt.i18n('stateRestore.state.shareInfo', 'Other users of the system will be able to use states that you share. They will not be able to edit the state.'), 'share', state.isSharedOut, 'checkbox'));
+        }
+        // List of options to that the user can toggle
+        let checkboxes = [];
+        for (const [name, manipulator] of Object.entries(stateManipulators)) {
+            // null indicates that the user can make the selection themselves
+            if (this.c.include[name] === null) {
+                checkboxes.push({
+                    name: name,
+                    label: manipulator.text(dt),
+                    value: true
                 });
             }
         }
-        dt.button('SaveStateRestore:name').collectionRebuild(stateButtons);
-        // Need to disable the removeAllStates button if there are no states and it is present
-        var buttons = dt.buttons();
-        for (var _a = 0, buttons_2 = buttons; _a < buttons_2.length; _a++) {
-            var butt = buttons_2[_a];
-            if ($(butt.node).hasClass('dtsr-removeAllStates')) {
-                if (states.length === 0) {
-                    dt.button(butt.node).disable();
-                }
-                else {
-                    dt.button(butt.node).enable();
-                }
-            }
+        if (checkboxes.length) {
+            // Order the available checkboxes alphabetically
+            checkboxes.sort((a, b) => a.name.localeCompare(b.name));
+            form.append(this._fieldCheckboxes(dt.i18n('stateRestore.state.properties', 'State properties:'), checkboxes));
         }
+        form.append(this._submitButton(dt.i18n('stateRestore.state.save', 'Save')));
+        // Event handler for when the form is submitted
+        form.on('submit', e => {
+            e.preventDefault();
+            // Post process the modal based on the inputs
+            this._stateUserInputProcess(state, body, cb);
+        });
+        // Finally, show the modal
+        this.modal(title, body);
     }
-    // Attach a listener to the document which listens for DataTables initialisation
-    // events so we can automatically initialise
-    $(document).on('preInit.dt.dtsr', function (e, settings) {
-        if (e.namespace !== 'dt') {
+    /**
+     * Once the end user submits the modal for saving the state, we need to
+     * process it.
+     *
+     * @param state State to update based on the modal input
+     * @param body Dom instance with the form elements
+     * @param cb Callback for when the state has been updated
+     */
+    _stateUserInputProcess(state, body, cb) {
+        let nameInput = body.find('input[name=name]');
+        let nameError = nameInput
+            .parent()
+            .find('div.' + this.classes.field.error);
+        let defaultInput = body.find('input[name=default]');
+        let shareInput = body.find('input[name=share]');
+        if (!nameInput.val()) {
+            // Show error - name is required
+            nameError.text(this.s.dt.i18n('stateRestore.state.nameRequired', 'A name is required for the state'));
             return;
         }
-        if (settings.oInit.stateRestore ||
-            DataTable.defaults.stateRestore) {
-            if (!settings._stateRestore) {
-                _init(settings, null);
+        else {
+            state.name = nameInput.val();
+            nameError.empty();
+        }
+        if (defaultInput.length) {
+            state.isDefault = defaultInput.prop('checked');
+            // If this is the default, no other state can be
+            if (state.isDefault) {
+                this.s.store
+                    .filter(s => s !== state)
+                    .forEach(s => (s.isDefault = false));
             }
         }
-    });
+        if (shareInput.length) {
+            state.isSharedOut = shareInput.prop('checked');
+        }
+        // Work through the list of options and see if they should be included /
+        // excluded
+        let includes = this.c.include;
+        for (const [name, manipulator] of Object.entries(stateManipulators)) {
+            if (includes[name] === null) {
+                // User selectable, depends on the checkbox state
+                if (!body.find(`input[name="${name}"]`).prop('checked')) {
+                    manipulator.remove(state.state);
+                }
+            }
+            else if (includes[name] === false) {
+                // Options specify that the option shouldn't be included
+                manipulator.remove(state.state);
+            }
+        }
+        cb(state);
+    }
+    /**
+     * Common create and submit button
+     *
+     * @param text Button text
+     * @returns DOM element with the button
+     */
+    _submitButton(text) {
+        // No need for a click submit event handler as this button will trigger
+        // the `submit` event for the form.
+        return Dom.c('div')
+            .classAdd('dtsb-modal-buttons')
+            .append(Dom.c('button')
+            .classAdd(this.classes.modal.button)
+            .text(text));
+    }
+}
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Statics
+ */
+States.classes = {
+    field: {
+        checkboxOption: '',
+        container: 'dtsb-field',
+        error: 'dtsb-field-error',
+        info: 'dtsb-field-info',
+        label: 'dtsb-field-label',
+        value: 'dtsb-field-value',
+        input: {
+            checkbox: 'dtsb-field-input',
+            text: 'dtsb-field-input'
+        }
+    },
+    form: '',
+    modal: {
+        button: 'dtsb-modal-button',
+        table: 'dtsb-modal_wide',
+        form: ''
+    },
+    removeMessage: 'dtsb-remove-message',
+    table: {
+        table: 'display',
+        button: 'dtsb-button'
+    }
+};
+States.defaults = {
+    ajax: null,
+    canCreate: true,
+    defaults: true,
+    include: {
+        cardView: true,
+        columnVisibility: true,
+        columnSearch: true,
+        columnControl: true,
+        columnOrder: true,
+        order: true,
+        pageStart: false,
+        pageLength: true,
+        scroller: false,
+        search: true,
+        searchBuilder: true,
+        searchPanes: true,
+        select: false
+    },
+    newName: null,
+    sharing: true,
+    predefined: []
+};
+States.manipulators = stateManipulators;
+States.version = '2.0.0-dev';
 
-})();
+// The SVG for many of these icons are from Lucide ( https://lucide.dev ), which are available
+// under the ISC License. There are a number of custom icons as well. These are optimised through
+// https://optimize.svgomg.net/
+function wrap(paths) {
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        paths +
+        '</svg>');
+}
+const icons = {
+    // square-arrow-right-enter
+    shareIn: wrap('<path d="m10 16 4-4-4-4"/><path d="M3 12h11"/><path d="M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/>'),
+    // square-arrow-right-exit
+    shareOut: wrap('<path d="M10 12h11"/><path d="m17 16 4-4-4-4"/><path d="M21 6.344V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.344"/>'),
+    // tick
+    tick: wrap('<path d="M20 6 9 17l-5-5"/>'),
+};
+
+// Quite a few `any`s in this file, as Select is not a dependency of
+// StateRestore as a whole, but is for this view of the states.
+function setup(dt, hostButton) {
+    let ctx = dt.settings()[0];
+    if (!DataTable.select) {
+        throw new Error("The Select extension is required for StateRestore's table view");
+    }
+    if (!ctx._statesTable) {
+        ctx._statesTable = new StateTable(dt, hostButton);
+    }
+    ctx._statesTable.display();
+}
+class StateTable {
+    /**
+     * Show the table in a States modal
+     */
+    display() {
+        this.s.states.modal('Saved states', Dom.s(this.s.statesDt.table().container()), true);
+    }
+    constructor(hostDt, hostButton) {
+        let ctx = hostDt.settings()[0];
+        if (!ctx._states) {
+            new States(hostDt);
+        }
+        let states = ctx._states;
+        let table = Dom.c('table').classAdd(States.classes.table.table);
+        let statesDt = new DataTable(table[0], {
+            columns: this._columns(states, hostDt),
+            layout: {
+                topStart: {
+                    buttons: this._buttons(states, hostDt)
+                }
+            },
+            paging: false,
+            select: {
+                style: 'os',
+                selector: 'td:first-child'
+            },
+            order: [[1, 'asc']],
+            scrollY: 300,
+            scrollCollapse: true,
+            rowId: 'id',
+            language: {
+                entries: hostDt.i18n('stateRestore.table.entries', {
+                    _: 'states',
+                    1: 'state'
+                }, false)
+            }
+        });
+        this.s = {
+            hostButton,
+            hostDt,
+            states,
+            statesDt
+        };
+        // Load button event handler
+        statesDt.on('click', 'tbody button', function () {
+            let row = statesDt.row(this.closest('tr')).data();
+            hostDt.state(row.state).draw(false);
+        });
+        states.loaded(() => {
+            statesDt.clear().rows.add(states.storeGet(true).slice()).draw();
+        });
+        hostDt
+            .on('stateRestore', () => {
+            // When the states change, we just redraw completely
+            statesDt.clear().rows.add(states.storeGet(true).slice()).draw();
+        })
+            .on('draw', () => {
+            // Update for the "current" state indicator
+            statesDt.rows().invalidate().draw();
+        });
+    }
+    /**
+     * Create the list of buttons
+     *
+     * @param states Host states instance
+     * @param hostDt Host DataTable
+     * @returns Array of buttons
+     */
+    _buttons(states, hostDt) {
+        // Create button is always active
+        let buttons = [];
+        if (states.can('create')) {
+            // Create button is always enabled if available
+            buttons.push({
+                text: hostDt.i18n('stateRestore.button.create', 'Create state'),
+                action: () => {
+                    states.add(hostDt.state());
+                }
+            });
+        }
+        // A common action between buttons is to get the state, and moreover,
+        // the actions can typically only be performed on states the user owns.
+        let selectedData = (own) => {
+            let selected = this.s.statesDt
+                .rows({ selected: true })
+                .data()
+                .toArray();
+            return own
+                ? selected.filter(s => !s.isSharedIn && !s.isStatic)
+                : selected;
+        };
+        // Edit button - only enable for a single state, and one which the user
+        // can actually edit
+        buttons.push({
+            text: hostDt.i18n('stateRestore.button.edit', 'Edit'),
+            action: () => {
+                this.s.states.edit(selectedData(true)[0]);
+            },
+            init: function (dt) {
+                this.disable();
+                dt.on('select deselect', () => {
+                    this.enable(selectedData(true).length === 1 &&
+                        selectedData(false).length === 1);
+                });
+            }
+        });
+        // Replace button - same as edit for enablement
+        buttons.push({
+            extend: 'selectedSingle',
+            text: hostDt.i18n('stateRestore.button.replace', 'Replace'),
+            action: () => {
+                let state = selectedData(true)[0];
+                states.edit(state, { state: hostDt.state() });
+            },
+            init: function (dt) {
+                this.disable();
+                dt.on('select deselect', () => {
+                    this.enable(selectedData(true).length === 1 &&
+                        selectedData(false).length === 1);
+                });
+            }
+        });
+        // Copy button - any row can be copied (allowing it here in the table,
+        // while the list view doesn't have a duplicate for one's own states)
+        buttons.push({
+            extend: 'selectedSingle',
+            text: hostDt.i18n('stateRestore.button.duplicate', 'Copy'),
+            action: () => {
+                let state = selectedData(false)[0];
+                states.add(state.state, state.name + hostDt.i18n('stateRestore.copyName', ' (copy)'));
+            }
+        });
+        // Delete button - can only delete one's own states
+        buttons.push({
+            text: hostDt.i18n('stateRestore.button.remove', 'Delete'),
+            action: () => {
+                let state = selectedData(true);
+                this.s.states.remove(state);
+            },
+            init: function (dt) {
+                this.disable();
+                dt.on('select deselect', () => {
+                    this.enable(selectedData(true).length !== 0 &&
+                        selectedData(true).length ===
+                            selectedData(false).length);
+                });
+            }
+        });
+        return buttons;
+    }
+    /**
+     * Define the columns for the DataTable
+     *
+     * @param states Host states instance
+     * @returns Column array
+     */
+    _columns(states, hostDt) {
+        let columns = [
+            {
+                orderable: false,
+                render: DataTable.render.select()
+            },
+            {
+                title: hostDt.i18n('stateRestore.table.name', 'Name'),
+                data: 'name'
+            },
+            {
+                title: hostDt.i18n('stateRestore.table.active', 'Active'),
+                data: null,
+                className: 'dt-center',
+                render: data => (states.isCurrent(data.state) ? icons.tick : '')
+            }
+        ];
+        if (states.can('default')) {
+            columns.push({
+                title: hostDt.i18n('stateRestore.table.default', 'Default'),
+                data: 'isDefault',
+                className: 'dt-center',
+                render: data => (data ? icons.tick : '')
+            });
+        }
+        if (states.can('share')) {
+            columns.push({
+                title: hostDt.i18n('stateRestore.table.share', 'Share'),
+                data: null,
+                className: 'dt-center',
+                render: data => {
+                    if (data.isSharedIn) {
+                        return icons.shareIn;
+                    }
+                    else if (data.isSharedOut) {
+                        return icons.shareOut;
+                    }
+                    return '';
+                }
+            });
+        }
+        columns.push({
+            data: null,
+            defaultContent: '<button class="' +
+                States.classes.table.button +
+                '">' +
+                hostDt.i18n('stateRestore.table.load', 'Load') +
+                '</button>',
+            orderable: false
+        });
+        return columns;
+    }
+}
+
+
+let buttonCounter = 0;
+DataTable.ext.buttons.stateCreate = {
+    action(e, dt, node, config) {
+        let states = dt.settings()[0]._states;
+        states.add(dt.state());
+    },
+    init(dt, node, config) {
+        let ctx = dt.settings()[0];
+        if (!ctx._states) {
+            new States(dt);
+        }
+        if (!ctx._states.can('create')) {
+            this.disable();
+        }
+    },
+    text: dt => dt.i18n('stateRestore.button.create', 'Create state')
+};
+DataTable.ext.buttons.removeAllStates = {
+    action(e, dt, node, config) {
+        let ctx = dt.settings()[0];
+        let states = ctx._states;
+        // Get all owned states
+        let myStates = states.storeGet().filter(s => !s.isSharedIn);
+        states.remove(myStates);
+    },
+    init(dt, node, config) {
+        let ctx = dt.settings()[0];
+        if (!ctx._states) {
+            new States(dt);
+        }
+        let states = ctx._states;
+        dt.on('stateRestore', () => {
+            this.enable(states.storeGet().length > 0);
+        });
+        this.enable(states.storeGet().length > 0);
+    },
+    text: dt => dt.i18n('stateRestore.button.statesRemoveAll', 'Remove all states')
+};
+DataTable.ext.buttons.statesList = {
+    extend: 'collection',
+    autoClose: true,
+    action(e, dt, node, config, cb) {
+        let states = dt.settings()[0]._states;
+        let buttons = [];
+        if (config.buttons && config.buttons.length) {
+            config.buttons.forEach(btn => buttons.push(btn));
+        }
+        if (states.storeGet(true).length) {
+            states.storeGet(true).forEach(state => {
+                let namespace = '.dtst-' + buttonCounter++;
+                let splits = [];
+                // Split buttons
+                if (!state.isSharedIn && !state.isStatic) {
+                    // Edit and delete actions available for buttons which are
+                    // owned by this user only.
+                    splits.push({
+                        text: dt.i18n('stateRestore.button.edit', 'Edit'),
+                        action: () => {
+                            states.edit(state);
+                        }
+                    });
+                    splits.push({
+                        text: dt.i18n('stateRestore.button.replace', 'Replace'),
+                        action: () => {
+                            states.edit(state, { state: dt.state() });
+                        }
+                    });
+                    splits.push({
+                        text: dt.i18n('stateRestore.button.remove', 'Delete'),
+                        action: () => {
+                            states.remove(state);
+                        }
+                    });
+                }
+                else {
+                    // If the state is shared in or static, then we can't edit
+                    // it, but we do allow it to be copied so that it can then
+                    // be edited
+                    if (states.can('create')) {
+                        splits.push({
+                            text: dt.i18n('stateRestore.button.duplicate', 'Copy'),
+                            action: () => {
+                                states.add(state.state, state.name +
+                                    dt.i18n('stateRestore.copyName', ' (copy)'));
+                            }
+                        });
+                    }
+                }
+                buttons.push({
+                    action: (e, dt) => {
+                        dt.state(state.state).draw(false);
+                    },
+                    popoverTitle: util.escapeHtml(state.name),
+                    split: splits,
+                    init: function (dt) {
+                        // This is only really needed for a change of state when the
+                        // dropdown is open, since the dropdown redraws every time
+                        // it is displayed.
+                        dt.on('draw' + namespace, () => {
+                            this.active(states.isCurrent(state.state));
+                        });
+                        this.active(states.isCurrent(state.state));
+                    },
+                    destroy: function (dt) {
+                        dt.off('draw' + namespace);
+                    },
+                    text: util.escapeHtml(state.name)
+                });
+            });
+        }
+        else {
+            buttons.push({
+                extend: 'spacer',
+                text: dt.i18n('stateRestore.button.empty', 'No saved states'),
+                style: 'empty'
+            });
+        }
+        dt.button(node).collectionRebuild(buttons);
+        DataTable.ext.buttons.collection.action.call(this, e, dt, node, config, cb);
+    },
+    buttons: [],
+    text: dt => dt.i18n('stateRestore.button.statesList', 'Saved states')
+};
+DataTable.ext.buttons.statesTable = {
+    autoClose: true,
+    action(e, dt, node, config, cb) {
+        setup(dt, node);
+    },
+    buttons: [],
+    text: dt => dt.i18n('stateRestore.button.statesTable', 'Saved states')
+};
+// Legacy aliases
+DataTable.ext.buttons.createState = DataTable.ext.buttons.stateCreate;
+DataTable.ext.buttons.savedStates = DataTable.ext.buttons.statesList;
+DataTable.ext.buttons.removeAllStates = DataTable.ext.buttons.statesRemoveAll;
+// Attach a listener to the document which listens for DataTables initialisation
+// events so we can automatically initialise
+Dom.s(document).on('options.dt.stateRestore', function (e, init) {
+    if (e.namespace !== 'dt') {
+        return;
+    }
+    if (init.stateRestore || DataTable.defaults.stateRestore) {
+        // We need to allow the DataTable to load an initial state, which it
+        // does using its `stateSave` feature, so it has to be enabled, and then
+        // restored to what the dev wants the value to be, once we've made use
+        // of it.
+        let initialValue = init.stateSave || DataTable.defaults.stateSave;
+        init.stateSave = true;
+        init.stateLoadCallback = (ctx, cb) => {
+            let controller = ctx._states || new States(ctx);
+            // stateLoadCallback uses the callback if the return from its
+            // function is undefined, but it doesn't accept a Promise
+            // itself, and we need the function to return before executing the
+            // callback, so use a setTimeout
+            setTimeout(async () => {
+                controller.loaded(() => {
+                    // Get default
+                    let def = controller.getDefault();
+                    // Callback state
+                    cb(def || {}, true);
+                });
+            }, 10);
+            // Restore state saving feature to dev's selection.
+            ctx.features.stateSave = initialValue;
+        };
+    }
+});
+/*
+ * DT API interface
+ */
+Api.register('stateRestore()', function () {
+    return this;
+});
+Api.register('stateRestore.activeStates()', function () {
+    let states = this.context[0]._states;
+    if (!states) {
+        return this;
+    }
+    return this.inst(this.context, states.storeGet().filter(s => states.isCurrent(s.state)));
+});
+Api.register('stateRestore.state()', function (id) {
+    let inst = this.inst(this.context);
+    let states = this.context[0]._states;
+    if (states) {
+        inst._stateSelected = states.storeGet().find(s => id === s.id);
+    }
+    return inst;
+});
+Api.register('stateRestore.add()', function (name) {
+    let states = this.context[0]._states;
+    if (states) {
+        states.add(this.state(), name, false, false);
+    }
+    return this;
+});
+Api.register('stateRestore.state().details()', function () {
+    return this._stateSelected || null;
+});
+Api.register('stateRestore.state().load()', function () {
+    let selected = this._stateSelected;
+    if (selected) {
+        this.state(selected.state).draw(false);
+    }
+    return this;
+});
+Api.register('stateRestore.state().remove()', function (skipConfirm = false) {
+    let states = this.context[0]._states;
+    let selected = this._stateSelected;
+    if (states && selected) {
+        states.remove(selected, skipConfirm);
+    }
+});
+Api.register('stateRestore.state().isActive()', function () {
+    let states = this.context[0]._states;
+    let selected = this._stateSelected;
+    return states && selected ? states.isCurrent(selected) : false;
+});
+Api.register('stateRestore.state().rename()', function (name) {
+    let states = this.context[0]._states;
+    let selected = this._stateSelected;
+    if (states && selected && name) {
+        states.edit(selected, {
+            name
+        }, true);
+    }
+    return this;
+});
+Api.register('stateRestore.state().edit()', function () {
+    let states = this.context[0]._states;
+    let selected = this._stateSelected;
+    if (states && selected) {
+        states.edit(selected);
+    }
+    return this;
+});
+Api.register('stateRestore.state().save()', function (skipModal = false) {
+    let states = this.context[0]._states;
+    let selected = this._stateSelected;
+    if (states && selected) {
+        states.edit(selected, {
+            state: this.state()
+        }, skipModal);
+    }
+    return this;
+});
+Api.register('stateRestore.states()', function (idOrIds) {
+    let inst = this.inst(this.context);
+    let states = this.context[0]._states;
+    if (states) {
+        let ids = idOrIds
+            ? Array.isArray(idOrIds)
+                ? idOrIds
+                : [idOrIds]
+            : states.storeGet(true).map(s => s.id);
+        inst._statesSelected = states
+            .storeGet()
+            .filter(s => ids.includes(s.id));
+    }
+    return inst;
+});
+Api.register('stateRestore.states().details()', function () {
+    return this._statesSelected || [];
+});
+Api.register('stateRestore.states().remove()', function (skipConfirm = false) {
+    let states = this.context[0]._states;
+    let selected = this._statesSelected;
+    if (states && selected) {
+        states.remove(selected, skipConfirm);
+    }
+    return this;
+});
+DataTable.StateRestore = States;
+
+
+return DataTable;
+}));

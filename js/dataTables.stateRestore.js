@@ -825,7 +825,7 @@ class States {
     constructor(host) {
         let dt = new DataTable.Api(host);
         let opts = dt.init().stateRestore;
-        DataTable.plus('2026-09-11');
+        DataTable.plus('2026-09-16');
         this.c = util.object.assignDeep({}, States.defaults, DataTable.defaults.stateRestore, opts);
         // Defaults can only be used if `stateRestore` is in the initialisation
         // options (as that will add the state loader - it won't work without
@@ -1458,7 +1458,7 @@ DataTable.ext.buttons.stateCreate = {
     },
     text: dt => dt.i18n('stateRestore.button.create', 'Create state')
 };
-DataTable.ext.buttons.removeAllStates = {
+DataTable.ext.buttons.statesRemoveAll = {
     action(e, dt, node, config) {
         let ctx = dt.settings()[0];
         let states = ctx._states;

@@ -1,14 +1,13 @@
 {
     "name": "datatables.net-staterestore",
     "description": "StateRestore for DataTables",
-    "main": "js/dataTables.stateRestore.js",
-    "module": "js/dataTables.stateRestore.mjs",
+    "main": "./js/dataTables.stateRestore.js",
+    "module": "./js/dataTables.stateRestore.mjs",
     "types": "./types/types.d.ts",
     "version": "2.0.1",
     "files": [
-        "js/**/*.js",
-        "js/**/*.mjs",
-        "types/**/*.d.ts"
+        "js",
+        "types"
     ],
     "keywords": [
         "StateRestore",
@@ -33,5 +32,16 @@
     "repository": {
         "type": "git",
         "url": "git+https://github.com/DataTables/StateRestore.git"
-    }
+    },
+    "exports": {
+        ".": {
+            "types": "./types/types.d.ts",
+            "import": "./js/dataTables.stateRestore.mjs",
+            "default": "./js/dataTables.stateRestore.mjs",
+            "require": "./js/dataTables.stateRestore.js"
+        },
+        "./js/*": "./js/*",
+        "./package.json": "./package.json"
+    },
+    "sideEffects": true
 }

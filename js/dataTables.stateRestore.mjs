@@ -1,4 +1,4 @@
-/*! StateRestore 2.0.1 for DataTables
+/*! StateRestore 2.1.0 for DataTables
  * Copyright (c) SpryMedia Ltd - datatables.net/license/plus
  *
  * SVG icons: ISC License
@@ -795,7 +795,7 @@ class States {
     constructor(host) {
         let dt = new DataTable.Api(host);
         let opts = dt.init().stateRestore;
-        DataTable.plus('2026-09-16');
+        DataTable.plus('2026-09-22');
         this.c = util.object.assignDeep({}, States.defaults, DataTable.defaults.stateRestore, opts);
         // Defaults can only be used if `stateRestore` is in the initialisation
         // options (as that will add the state loader - it won't work without
@@ -1167,7 +1167,7 @@ States.defaults = {
     predefined: []
 };
 States.manipulators = stateManipulators;
-States.version = '2.0.1';
+States.version = '2.1.0';
 
 // The SVG for many of these icons are from Lucide ( https://lucide.dev ), which are available
 // under the ISC License. There are a number of custom icons as well. These are optimised through

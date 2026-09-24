@@ -37,8 +37,8 @@
         ".": {
             "types": "./types/types.d.ts",
             "import": "./js/dataTables.stateRestore.mjs",
-            "default": "./js/dataTables.stateRestore.mjs",
-            "require": "./js/dataTables.stateRestore.js"
+            "require": "./js/dataTables.stateRestore.js",
+            "default": "./js/dataTables.stateRestore.mjs"
         },
         "./js/*": "./js/*",
         "./package.json": "./package.json"

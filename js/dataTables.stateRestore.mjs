@@ -1,4 +1,4 @@
-/*! StateRestore 2.1.1 for DataTables
+/*! StateRestore 2.2.0 for DataTables
  * Copyright (c) SpryMedia Ltd - datatables.net/license/plus
  *
  * SVG icons: ISC License
@@ -505,11 +505,14 @@ class States {
      *
      * @param state DataTables state to save
      * @param name New name
+     * @param isStatic Is a static state
+     * @param isDefault Is the default state
+     * @param id State id
      */
-    add(state, newName = null, isStatic = false, isDefault = false) {
+    add(state, newName = null, isStatic = false, isDefault = false, id = null) {
         if (isStatic) {
             this.s.store.push({
-                id: null,
+                id: id || null,
                 isDefault,
                 isSharedIn: false,
                 isSharedOut: false,
@@ -523,7 +526,7 @@ class States {
                 return;
             }
             this._stateUserInput(this.s.dt.i18n('stateRestore.create.title', 'Save new state'), this.s.dt.i18n('stateRestore.create.info', ''), {
-                id: null,
+                id: id || null,
                 isDefault,
                 isSharedIn: false,
                 isSharedOut: false,
@@ -569,12 +572,40 @@ class States {
         }
     }
     /**
-     * Get the default state
+     * Get the state to load on initialisation. This can be identified from a
+     * bookmark, or it can be from a default state flag.
      *
+     * @param allowDefault Let the default be used if there is no matching state
      * @returns DataTables state object
      */
-    getDefault() {
-        let state = this.s.store.find(s => s.isDefault);
+    getInitialLoadState(allowDefault = true) {
+        let bookmark = this.c.bookmark;
+        let state = null;
+        if (bookmark.src) {
+            let val = '';
+            if (bookmark.src.charAt(0) === '?') {
+                // Query parameter
+                let paramName = bookmark.src.slice(1);
+                let params = new URLSearchParams(document.location.search);
+                if (params.has(paramName)) {
+                    val = params.get(paramName);
+                }
+            }
+            else if (bookmark.src.charAt(0) === '#') {
+                // Search string - remove the src value from the location's hash
+                // which will leave only the part we've to match against.
+                let re = new RegExp('^' + util.string.escapeRegex(bookmark.src));
+                val = window.location.hash.replace(re, '');
+            }
+            state =
+                bookmark.match === 'id'
+                    ? this.s.store.find(s => s.id == val) // loose typing for numbers
+                    : this.s.store.find(s => s.name === val);
+        }
+        // Nothing from the bookmarking, so check if there is a default state
+        if (!state && allowDefault) {
+            state = this.s.store.find(s => s.isDefault);
+        }
         return state ? state.state : null;
     }
     /**
@@ -601,20 +632,6 @@ class States {
             }
         }
         return true;
-    }
-    /**
-     * Execute a function once the states have been loaded (allowing async
-     * loading)
-     *
-     * @param cb Function to execute
-     */
-    loaded(cb) {
-        if (this.s.loading) {
-            this.s.whenLoaded.push(cb);
-        }
-        else {
-            cb();
-        }
     }
     /**
      * Edit a state's properties. Can be used to replace a state if a new state
@@ -652,6 +669,42 @@ class States {
      */
     error(msg) {
         alert(msg);
+    }
+    /**
+     * Load a state
+     *
+     * @param state State to load
+     */
+    load(state) {
+        this.s.dt.state(state.state).draw(false);
+        // Bookmarking
+        let bookmark = this.c.bookmark;
+        if (bookmark.src && bookmark.update) {
+            let url = new URL(document.location.href);
+            let val = bookmark.match === 'id' ? state.id : state.name;
+            if (bookmark.src.charAt(0) === '?') {
+                let paramName = bookmark.src.slice(1);
+                url.searchParams.set(paramName, val.toString());
+                history.replaceState(null, '', url.pathname + url.search);
+            }
+            else if (bookmark.src.charAt(0) === '#') {
+                history.replaceState(null, '', url.pathname + url.search + bookmark.src + val);
+            }
+        }
+    }
+    /**
+     * Execute a function once the states have been loaded (allowing async
+     * loading)
+     *
+     * @param cb Function to execute
+     */
+    loaded(cb) {
+        if (this.s.loading) {
+            this.s.whenLoaded.push(cb);
+        }
+        else {
+            cb();
+        }
     }
     /**
      * Display a modal, allowing for layering, so a modal can have an action
@@ -795,7 +848,7 @@ class States {
     constructor(host) {
         let dt = new DataTable.Api(host);
         let opts = dt.init().stateRestore;
-        DataTable.plus('2026-10-16');
+        DataTable.plus('2026-10-19');
         this.c = util.object.assignDeep({}, States.defaults, DataTable.defaults.stateRestore, opts);
         // Defaults can only be used if `stateRestore` is in the initialisation
         // options (as that will add the state loader - it won't work without
@@ -834,6 +887,17 @@ class States {
                 this._addPredefined(json.stateRestore);
             }
         });
+        // Set up a listener for future hash changes, as it doesn't reload the
+        // page.
+        if (this.c.bookmark.src && this.c.bookmark.src.charAt(0) === '#') {
+            Dom.w.on('hashchange.dtsr', event => {
+                let state = this.getInitialLoadState(false);
+                if (state) {
+                    let s = this.s.store.find(s => state === s.state);
+                    this.load(s);
+                }
+            });
+        }
         // Initial startup actions
         this._load();
     }
@@ -848,7 +912,7 @@ class States {
     async _addPredefined(predefined) {
         if (Array.isArray(predefined)) {
             predefined.forEach(s => {
-                this.add(s.state, s.name, true, s.isDefault || false);
+                this.add(s.state, s.name, true, s.isDefault || false, s.id || null);
             });
         }
         else {
@@ -1145,6 +1209,11 @@ States.classes = {
 };
 States.defaults = {
     ajax: null,
+    bookmark: {
+        match: 'id',
+        src: '',
+        update: true
+    },
     canCreate: true,
     defaults: true,
     include: {
@@ -1167,7 +1236,7 @@ States.defaults = {
     predefined: []
 };
 States.manipulators = stateManipulators;
-States.version = '2.1.1';
+States.version = '2.2.0';
 
 // The SVG for many of these icons are from Lucide ( https://lucide.dev ), which are available
 // under the ISC License. There are a number of custom icons as well. These are optimised through
@@ -1243,8 +1312,8 @@ class StateTable {
         };
         // Load button event handler
         statesDt.on('click', 'tbody button', function () {
-            let row = statesDt.row(this.closest('tr')).data();
-            hostDt.state(row.state).draw(false);
+            let stateData = statesDt.row(this.closest('tr')).data();
+            states.load(stateData);
         });
         states.loaded(() => {
             statesDt.clear().rows.add(states.storeGet(true).slice()).draw();
@@ -1499,7 +1568,7 @@ DataTable.ext.buttons.statesList = {
                 }
                 buttons.push({
                     action: (e, dt) => {
-                        dt.state(state.state).draw(false);
+                        states.load(state);
                     },
                     popoverTitle: util.escapeHtml(state.name),
                     split: splits,
@@ -1566,7 +1635,7 @@ Dom.on('options.dt.stateRestore', function (e, init) {
             setTimeout(async () => {
                 controller.loaded(() => {
                     // Get default
-                    let def = controller.getDefault();
+                    let def = controller.getInitialLoadState();
                     // Callback state
                     cb(def || {}, true);
                 });
@@ -1608,9 +1677,10 @@ Api.register('stateRestore.state().details()', function () {
     return this._stateSelected || null;
 });
 Api.register('stateRestore.state().load()', function () {
+    let states = this.context[0]._states;
     let selected = this._stateSelected;
     if (selected) {
-        this.state(selected.state).draw(false);
+        states.load(selected);
     }
     return this;
 });

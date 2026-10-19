@@ -76,8 +76,11 @@ declare class States {
      *
      * @param state DataTables state to save
      * @param name New name
+     * @param isStatic Is a static state
+     * @param isDefault Is the default state
+     * @param id State id
      */
-    add(state: StateLoad, newName?: string | null, isStatic?: boolean, isDefault?: boolean): void;
+    add(state: StateLoad, newName?: string | null, isStatic?: boolean, isDefault?: boolean, id?: string | number | null): void;
     /**
      * Get the base Ajax configuration
      *
@@ -91,11 +94,13 @@ declare class States {
      */
     can(action: 'create' | 'default' | 'share'): boolean;
     /**
-     * Get the default state
+     * Get the state to load on initialisation. This can be identified from a
+     * bookmark, or it can be from a default state flag.
      *
+     * @param allowDefault Let the default be used if there is no matching state
      * @returns DataTables state object
      */
-    getDefault(): StateLoad | null;
+    getInitialLoadState(allowDefault?: boolean): StateLoad | null;
     /**
      * Check if a state is currently displayed. Note that a state is considered
      * to be active if its properties match those for the current state, however
@@ -106,13 +111,6 @@ declare class States {
      * @param state The state object to check
      */
     isCurrent(state: StateLoad): boolean;
-    /**
-     * Execute a function once the states have been loaded (allowing async
-     * loading)
-     *
-     * @param cb Function to execute
-     */
-    loaded(cb: () => void): void;
     /**
      * Edit a state's properties. Can be used to replace a state if a new state
      * object is passed in with the `state` property set.
@@ -126,6 +124,19 @@ declare class States {
      * @param msg
      */
     error(msg: string): void;
+    /**
+     * Load a state
+     *
+     * @param state State to load
+     */
+    load(state: State): void;
+    /**
+     * Execute a function once the states have been loaded (allowing async
+     * loading)
+     *
+     * @param cb Function to execute
+     */
+    loaded(cb: () => void): void;
     /**
      * Display a modal, allowing for layering, so a modal can have an action
      * that will display an "inner" modal, but uses the same modal display,
@@ -476,6 +487,39 @@ interface Defaults {
     /** Ajax URL to save / load states */
     ajax: AjaxOptions | string | null;
     /**
+     * Bookmark-able states configuration
+     */
+    bookmark: {
+        /**
+         * Should the state id or name be used as the source. The name is more
+         * friendly in the URL, however, if you allow the user to change the
+         * state name, after creation, it would require the bookmark to be
+         * updated.
+         *
+         * Use `name` if you are focusing on static states. Use `id` if you
+         * allow bookmarking of user created states.
+         */
+        match: 'id' | 'name';
+        /**
+         * Source for where to look in the URL for the state to load. This can
+         * be one of:
+         *
+         * * `` {empty string} - disabled, no bookmarking
+         * * `?{name}` - a search string / query parameter where `{name}` is the
+         *   parameter name to use.
+         * * `#` - a hash value with no prefix
+         * * `#{name}` - a hash value with a StateRestore specific prefix
+         *   defined by `{name}`.
+         *
+         */
+        src: string;
+        /**
+         * Indicate if the URL will be updated as the user selects different
+         * states.
+         */
+        update: boolean;
+    };
+    /**
      * The end user is allowed to create new states
      */
     canCreate: boolean;
@@ -508,6 +552,10 @@ interface Defaults {
     sharing: boolean;
 }
 interface Predefined {
+    /**
+     * State id for external reference
+     */
+    id?: number | string | null;
     /**
      * Name to give the state
      */

@@ -848,7 +848,7 @@ class States {
     constructor(host) {
         let dt = new DataTable.Api(host);
         let opts = dt.init().stateRestore;
-        DataTable.plus('2026-10-20');
+        DataTable.plus('2026-10-29');
         this.c = util.object.assignDeep({}, States.defaults, DataTable.defaults.stateRestore, opts);
         // Defaults can only be used if `stateRestore` is in the initialisation
         // options (as that will add the state loader - it won't work without
